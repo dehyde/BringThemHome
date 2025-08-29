@@ -6,8 +6,8 @@
 Create a comprehensive timeline visualization showing the journey of every hostage from the October 7th incident through their current status, using a swimlane-based approach that clearly shows state transitions over time.
 
 ### 1.2 User Goals
-- **Primary**: Understand the chronological progression of hostage situations
-- **Secondary**: Compare different release methods and outcomes
+- **Primary**: Understand the impact of military operation and of delay on the surviavability of hostages compared to a deal
+- *Secondary***: Understand the chronological progression of hostage situations
 - **Tertiary**: Identify patterns in timing and circumstances
 
 ## 2. Data Requirements
@@ -15,12 +15,15 @@ Create a comprehensive timeline visualization showing the journey of every hosta
 ### 2.1 Input Data Source
 - **Primary File**: `hostages-from-kan.csv`
 - **Required Fields**:
-  - Name (Hebrew and English)
+  - Name (Hebrew)
   - Initial status on October 7th (living/deceased)
   - Release date (if applicable)
-  - Release circumstances/method
-  - Death date (if applicable)
-  - Current status
+  - Release method (Negotiations, Military extraction, Hamas-spontanious)
+  - Death date (if applicable) or range-date of death
+  - Death reason (Hamas execution unprovoked, Hamas execution as response to IDF progress, IDF accidental, Sanitary/health, unknown, any other)
+  - Age when kidnapped
+  - Photo URL
+  - Direct URLs for all data sources
 
 ### 2.2 Data Processing Requirements
 - **Date Validation**: All dates must be validated against valid date formats
@@ -31,78 +34,55 @@ Create a comprehensive timeline visualization showing the journey of every hosta
 
 ### 3.1 Overall Geometry
 - **Orientation**: Right-to-left (RTL) timeline flow
-- **Dimensions**: Responsive width, minimum 800px height
-- **Background**: White (#FFFFFF)
+- **Dimensions**: Responsive width, full height
 - **Timeline Direction**: Time flows from right (October 7, 2023) to left (present)
 
 ### 3.2 Swimlane Structure
+    - Height of every division and subdivisions = aggregated height of all lines * their stroke width+all gaps between lines + internal padding of the division
 #### 3.2.1 Major Divisions
-- **Released Section**: Top 55% of visualization (0-55%)
-  - Color theme: Green (#059669)
+- **Released Section**: 
   - Position: Top of visualization
   
-- **Gap Section**: 5% neutral zone (55-60%)
-  - Purpose: Clear visual separation
-  - Color: Background (white/gray)
-  
-- **Kidnapped Section**: Bottom 40% of visualization (60-100%)
-  - Color theme: Red (#dc2626)
+- **Kidnapped Section**: 
   - Position: Bottom of visualization
 
 #### 3.2.2 Released Section Subdivisions
-- **Military Rescue Lane**: 0-15% (15% height)
+- **Military Rescue Lane**:
   - Label: "חולצו במבצע" (Hebrew)
-  - Color: Blue (#3b82f6)
   - For hostages rescued by military operations
   
 - **Deal Release Lane**: 15-55% (40% height)
   - Label: "שוחררו בעסקה" (Hebrew)
-  - Color: Green (#22c55e)
   - For hostages released through negotiations/deals
 
 #### 3.2.3 Kidnapped Section Subdivisions
-- **Living Kidnapped Lane**: 60-80% (20% height)
-  - Label: "נחטפו חיים" (Hebrew)
-  - Color: Light Red (#ef4444)
+- **Living Kidnapped Lane**:
+  - Label: "חטופים חיים" (Hebrew)
   - For hostages kidnapped alive on October 7th
   
-- **Deceased Kidnapped Lane**: 80-100% (20% height)
-  - Label: "נחטפו מתים" (Hebrew)
-  - Color: Dark Red (#7f1d1d)
-  - For hostages who died on October 7th
+- **Deceased Kidnapped Lane**: 
+  - Label: "חטופים מתים" (Hebrew)
+  - For hostages who died on October 7th, before or after
 
 ### 3.3 Lane Labeling Requirements
 - **Position**: Right side of visualization
 - **Language**: Hebrew (RTL support required)
-- **Major Labels**: 
-  - Font size: 24px
-  - Background: Lane color
-  - Text color: White
-  - Padding: 15px horizontal, 25px vertical
-  - Border radius: 10px
-- **Subdivision Labels**:
-  - Font size: 16px
-  - Background: Subdivision color
-  - Text color: White
-  - Padding: 8px horizontal, 15px vertical
-  - Border radius: 8px
 
 ## 4. Line Representation Requirements
 
 ### 4.1 Individual Hostage Lines
 - **Line Type**: Individual lines (not aggregated flows)
-- **Line Width**: 1.5px
+- **Line Width**: 1px
 - **Line Style**: 
-  - Living hostages: Solid lines
-  - Deceased hostages: Dashed lines (2px dash, 2px gap)
+  - Living hostages: Opaque lines
+  - Deceased hostages: Semitransparent lines, same color
 - **Line Caps**: Rounded (`stroke-linecap: round`)
 - **Line Joins**: Rounded (`stroke-linejoin: round`)
 
 ### 4.2 Line Spacing Within Lanes
-- **Spacing Method**: Fixed 2.5px spacing between lines
-- **Margin**: 2.5% margin at top of each lane
+- **Spacing Method**: Fixed 4px spacing between lines
 - **Overflow Handling**: Proportional compression if lines exceed lane height
-- **Boundary Enforcement**: Lines must not exceed lane boundaries
+- **Boundary Enforcement**: Lines must not exceed lane boundaries, lanes must change height according to the maximum number of lines that appear in the lane
 
 ### 4.3 Line Colors
 - **Kidnapped Living**: Red (#ef4444)
