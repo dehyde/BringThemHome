@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.kan.org.il)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(nslookup:*)",
+      "Bash(ping:*)",
+      "mcp__ide__executeCode",
+      "Bash(pip install:*)",
+      "Bash(del \"C:\\Users\\tomba\\Desktop\\Temp\\BringThemHome\\clean_hostages.py\")",
+      "Bash(rm:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:stories.bringthemhomenow.net)",
+      "WebFetch(domain:web.archive.org)",
+      "WebFetch(domain:www.ynet.co.il)",
+      "WebFetch(domain:drive.google.com)",
+      "WebFetch(domain:www.chabad.org)",
+      "WebFetch(domain:www.gov.il)",
+      "Bash(mkdir:*)",
+      "Bash(move *.csv temp_archive )",
+      "Bash(move *.py temp_archive )",
+      "Bash(move:*)",
+      "Bash(mv:*)",
+      "Bash(del hostages-fresh-start.csv)",
+      "Bash(del hostages-corrected-extraction.csv)",
+      "WebSearch",
+      "WebFetch(domain:www.timesofisrael.com)",
+      "WebFetch(domain:www.jpost.com)",
+      "WebFetch(domain:www.cnn.com)",
+      "WebFetch(domain:www.cbsnews.com)",
+      "WebFetch(domain:www.haaretz.com)"
+    ],
+    "deny": []
+  }
+}

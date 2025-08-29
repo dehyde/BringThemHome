@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>נתיבי גורל החטופים - ויזואליזציית קווי רכבת תחתית</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Arial Hebrew', 'Noto Sans Hebrew', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: white;
+            color: #333;
+            direction: rtl;
+            text-align: right;
+            unicode-bidi: bidi-override;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: #e2e8f0;
+            margin-bottom: 25px;
+        }
+        
+        .urgent-banner {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+        }
+        
+        .urgent-number {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .urgent-text {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .legend-line {
+            width: 30px;
+            height: 4px;
+            border-radius: 2px;
+        }
+        
+        .timeline-container {
+            width: 100%;
+            height: 800px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .batch-label {
+            position: absolute;
+            right: 20px; /* Changed from left to right for RTL */
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            direction: rtl;
+            text-align: right;
+        }
+        
+        .date-marker {
+            position: absolute;
+            bottom: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1e40af;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .hostage-line {
+            fill: none;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .hostage-line:hover {
+            stroke-width: 3;
+            filter: brightness(1.3);
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            pointer-events: none;
+            max-width: 300px;
+            z-index: 1000;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            direction: rtl;
+            text-align: right;
+            font-family: 'Arial Hebrew', 'Noto Sans Hebrew', sans-serif;
+        }
+        
+        .tooltip-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #60a5fa;
+        }
+        
+        .timeline-axis {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .control-button {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 0 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .statistics {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            min-width: 150px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">נתיבי גורל החטופים</div>
+            <div class="subtitle">ויזואליזציית קווי רכבת תחתית - מסע הגורל של כל חטוף וחטופה</div>
+        </div>
+        
+        <div class="urgent-banner">
+            <div class="urgent-number" id="heldCount">47</div>
+            <div class="urgent-text">עדיין בשבי - יש להחזירם הביתה עכשיו!</div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-line" style="background: #ef4444;"></div>
+                <span>בשבי</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #22c55e;"></div>
+                <span>שוחרר בעסקה</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #3b82f6;"></div>
+                <span>חולץ במבצע צבאי</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #f59e0b;"></div>
+                <span>נפטר - גופה הוחזרה</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line" style="background: #6b7280;"></div>
+                <span>נפטר</span>
+            </div>
+        </div>
+        
+        <div class="timeline-container" id="timeline"></div>
+        
+        <div class="controls">
+            <button class="control-button" onclick="animateTimeline()">הפעל אנימציה</button>
+            <button class="control-button" onclick="resetTimeline()">איפוס</button>
+            <button class="control-button" onclick="highlightStatus('Held in Gaza')">הדגש שבויים</button>
+            <button class="control-button" onclick="highlightStatus('Released')">הדגש משוחררים</button>
+        </div>
+        
+        <div class="statistics">
+            <div class="stat-box">
+                <div class="stat-number" id="totalCount">0</div>
+                <div class="stat-label">סה"כ חטופים</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="releasedCount">0</div>
+                <div class="stat-label">שוחררו</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="rescuedCount">0</div>
+                <div class="stat-label">חולצו</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="deceasedCount">0</div>
+                <div class="stat-label">נפטרו</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip" style="display: none;"></div>
+
+    <script>
+        // ===== CONFIGURATION AND GLOBAL STATE =====
+        const CONFIG = {
+            RTL: true,
+            HEBREW_FONT: "'Arial Hebrew', 'Noto Sans Hebrew', sans-serif",
+            TIMELINE: {
+                START_DATE: '2023-10-07',
+                END_DATE: '2025-03-01',
+                MARGIN: { top: 50, right: 50, bottom: 80, left: 50 }
+            },
+            COLORS: {
+                'Held in Gaza': '#ef4444',
+                'Released': '#22c55e',
+                'Deceased - Returned': '#f59e0b', 
+                'Deceased': '#6b7280',
+                'Military Rescue': '#3b82f6'
+            },
+            HEBREW_STATUS_MAP: {
+                'Held in Gaza': 'בשבי בעזה',
+                'Released': 'שוחרר',
+                'Deceased - Returned': 'נפטר - גופה הוחזרה',
+                'Deceased': 'נפטר',
+                'Unknown': 'לא ידוע'
+            },
+            DASH_PATTERN: {
+                SIZE: 2,
+                GAP: 2,
+                get LINE_SPACING() { return this.GAP + 1; } // Dynamic calculation
+            }
+        };
+        
+        // Global state
+        let hostageData = [];
+        let svg, xScale, yScale;
+        let isAnimating = false;
+        
+        // ===== DATA LOADING AND PROCESSING =====
+        async function loadData() {
+            try {
+                const response = await fetch('hostages-from-kan.csv');
+                const csvText = await response.text();
+                
+                hostageData = parseHebrewCSV(csvText);
+                console.log(`טען ${hostageData.length} חטופים`);
+                
+                initializeVisualization();
+                
+            } catch (error) {
+                console.error('שגיאה בטעינת הנתונים:', error);
+                createSampleData();
+            }
+        }
+        
+        function parseHebrewCSV(csvText) {
+            const lines = csvText.split('\n');
+            const headers = parseCSVLine(lines[0]);
+            
+            return lines.slice(1)
+                .filter(line => line.trim())
+                .map((line, index) => {
+                    const values = parseCSVLine(line);
+                    const entry = {};
+                    
+                    headers.forEach((header, i) => {
+                        entry[header.trim()] = values[i] ? values[i].trim() : '';
+                    });
+                    
+                    return processHostageEntry(entry, index);
+                });
+        }
+        
+        function processHostageEntry(entry, index) {
+            const hebrewName = entry['Hebrew Name'] || `חטוף ${index + 1}`;
+            const status = entry['Current Status'] || 'Unknown';
+            const circumstances = entry['Release/Death Circumstances'] || '';
+            const releaseDate = entry['Release Date'] || null;
+            
+            // Debug only Deal-related entries
+            if (circumstances.includes('Deal')) {
+                console.log(`[DEBUG] DEAL HOSTAGE ${index}: ${hebrewName}`);
+                console.log(`[DEBUG]   Raw release date: "${entry['Release Date']}"`);
+                console.log(`[DEBUG]   Raw circumstances: "${entry['Release/Death Circumstances']}"`);
+                console.log(`[DEBUG]   Processed release date: "${releaseDate}"`);
+                console.log(`[DEBUG]   Processed circumstances: "${circumstances}"`);
+            }
+            
+            return {
+                id: index,
+                name: hebrewName,
+                age: parseInt(entry['Age at Kidnapping']) || 0,
+                status: status,
+                kidnappedDate: entry['Kidnapped Date'] || CONFIG.TIMELINE.START_DATE,
+                releaseDate: releaseDate,
+                deathDate: entry['Date of Death'] || null,
+                circumstances: circumstances,
+                location: entry['Location Kidnapped (Hebrew)'] || '',
+                livingOnOct7: !entry['Date of Death'] || entry['Date of Death'] === CONFIG.TIMELINE.START_DATE ? false : true,
+                summary: entry['Kidnapping Summary (Hebrew)'] || '',
+                // Determine final batch based on status and circumstances
+                finalBatch: determineFinalBatch(status, circumstances)
+            };
+        }
+        
+        function determineFinalBatch(status, circumstances) {
+            if (status === 'Held in Gaza') {
+                return 'held';
+            } else if (status === 'Released') {
+                if (circumstances.includes('Military') || circumstances.includes('Rescue')) {
+                    return 'rescue';
+                } else {
+                    return 'deal';
+                }
+            } else if (status === 'Deceased - Returned') {
+                return 'deceased_returned';
+            } else if (status === 'Deceased') {
+                return 'deceased';
+            } else {
+                return 'held'; // Default for unclear status
+            }
+        }
+        
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            result.push(current);
+            return result;
+        }
+        
+        function createSampleData() {
+            // Create sample data for demonstration if CSV fails to load
+            const statuses = ['Held in Gaza', 'Released', 'Deceased - Returned', 'Deceased'];
+            const names = ['דוגמה א', 'דוגמה ב', 'דוגמה ג', 'דוגמה ד'];
+            
+            hostageData = Array.from({length: 100}, (_, i) => ({
+                id: i,
+                name: `${names[i % names.length]} ${Math.floor(i/4) + 1}`,
+                age: 20 + Math.floor(Math.random() * 60),
+                status: statuses[Math.floor(Math.random() * statuses.length)],
+                kidnappedDate: '2023-10-07',
+                releaseDate: Math.random() > 0.6 ? '2024-01-15' : null,
+                deathDate: Math.random() > 0.8 ? '2023-10-07' : null,
+                circumstances: 'דוגמה',
+                location: 'מיקום דוגמה',
+                livingOnOct7: Math.random() > 0.2,
+                summary: 'סיכום דוגמה'
+            }));
+            
+            createVisualization();
+            updateStatistics();
+        }
+        
+        // ===== VISUALIZATION CREATION =====
+        function initializeVisualization() {
+            createVisualization();
+            updateStatistics();
+            setupEventHandlers();
+        }
+        
+        function createVisualization() {
+            const container = d3.select('#timeline');
+            const containerRect = container.node().getBoundingClientRect();
+            const { width, height } = calculateDimensions(containerRect);
+            
+            // Clear existing content
+            container.selectAll('*').remove();
+            
+            // Create RTL-aware SVG
+            svg = createRTLSVG(container, width, height);
+            
+            // Create RTL-aware scales
+            setupScales(width, height);
+            
+            // Create swimlane structure
+            const swimlanes = createSwimlaneLanes();
+            
+            // Render swimlane divisions and labels
+            renderSwimlaneDivisions(container, swimlanes, width, height);
+            
+            // Draw timeline lines moving through swimlanes
+            drawSwimlanePaths(swimlanes, width, height);
+            
+            // Add RTL timeline axis
+            addRTLTimelineAxis(container, width, height);
+        }
+        
+        function calculateDimensions(containerRect) {
+            return {
+                width: containerRect.width,
+                height: containerRect.height - CONFIG.TIMELINE.MARGIN.bottom
+            };
+        }
+        
+        function createRTLSVG(container, width, height) {
+            return container.append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('dir', 'rtl')
+                .style('direction', 'rtl');
+        }
+        
+        function setupScales(width, height) {
+            // For RTL: October 7 (start) should be on the RIGHT, current date on the LEFT
+            const timelineStart = new Date(CONFIG.TIMELINE.START_DATE); // Oct 7 - should be RIGHT
+            const timelineEnd = new Date(CONFIG.TIMELINE.END_DATE);     // Current - should be LEFT
+            
+            // RTL positioning: timeline flows from right to left
+            xScale = d3.scaleTime()
+                .domain([timelineStart, timelineEnd])  // Oct 7 → Current
+                .range([width - CONFIG.TIMELINE.MARGIN.right, CONFIG.TIMELINE.MARGIN.left]); // Right → Left
+            
+            yScale = d3.scaleLinear()
+                .domain([0, 5])
+                .range([CONFIG.TIMELINE.MARGIN.top, height - CONFIG.TIMELINE.MARGIN.bottom]);
+        }
+        
+        function createSwimlaneLanes() {
+            // SWIMLANE STRUCTURE - Fixed semantic and logic
+            const swimlanes = {
+                // MAJOR DIVISION 1: KIDNAPPED (Lower half)
+                kidnapped: {
+                    name: 'נחטפו',
+                    y: 0.60,  // Lower part starts at 60% (more gap)
+                    height: 0.40,  // Takes 40% of screen
+                    color: '#dc2626',
+                    subdivisions: {
+                        living: {
+                            name: 'נחטפו חיים',
+                            y: 0.60,  // Start at 60%
+                            height: 0.20,  // 20% height
+                            color: '#ef4444',
+                            maxCount: 0
+                        },
+                        deceased: {
+                            name: 'נחטפו מתים',
+                            y: 0.80,  // Start at 80%
+                            height: 0.20,  // 20% height to fill to 100%
+                            color: '#7f1d1d',
+                            maxCount: 0
+                        }
+                    }
+                },
+                
+                // MAJOR DIVISION 2: RELEASED (Upper half)
+                released: {
+                    name: 'שוחררו',
+                    y: 0,  // Start at top
+                    height: 0.55,  // Takes 55% of screen (more space for green lines)
+                    color: '#059669',
+                    subdivisions: {
+                        military: {
+                            name: 'חולצו במבצע',
+                            y: 0,  // Start at top
+                            height: 0.15,  // 15% height (more space)
+                            color: '#3b82f6',
+                            maxCount: 0
+                        },
+                        deal: {
+                            name: 'שוחררו בעסקה',
+                            y: 0.15,  // Start after military
+                            height: 0.40,  // 40% height (most releases are deals)
+                            color: '#22c55e',
+                            maxCount: 0
+                        }
+                    }
+                }
+            };
+            
+            // First pass: Create swimlane histories for ALL hostages
+            let processedCount = 0;
+            
+            // Sort hostages globally for consistent positioning
+            const sortedHostages = [...hostageData].sort((a, b) => {
+                // Primary sort: living status (living first, then deceased)
+                const aIsDeceased = a.deathDate === CONFIG.TIMELINE.START_DATE || a.deathDate;
+                const bIsDeceased = b.deathDate === CONFIG.TIMELINE.START_DATE || b.deathDate;
+                
+                if (aIsDeceased !== bIsDeceased) {
+                    return aIsDeceased ? 1 : -1; // Living first
+                }
+                
+                // Secondary sort: by release date (earliest releases first)
+                const releaseDateA = a.releaseDate;
+                const releaseDateB = b.releaseDate;
+                
+                if (releaseDateA && releaseDateB) {
+                    return new Date(releaseDateA) - new Date(releaseDateB);
+                }
+                if (releaseDateA && !releaseDateB) return -1;
+                if (!releaseDateA && releaseDateB) return 1;
+                
+                // Tertiary sort: by name
+                return a.name.localeCompare(b.name);
+            });
+            
+            // Assign consistent global position indices
+            sortedHostages.forEach((hostage, globalIndex) => {
+                hostage.globalPosition = globalIndex;
+            });
+            
+            hostageData.forEach((hostage, index) => {
+                hostage.swimlaneHistory = [];
+                
+                // EVERYONE starts as "נחטפו חיים" or "נחטפו מתים" based on Oct 7 status
+                const initialLane = hostage.deathDate === CONFIG.TIMELINE.START_DATE ? 'kidnapped.deceased' : 'kidnapped.living';
+                const initialY = hostage.deathDate === CONFIG.TIMELINE.START_DATE ? 
+                    swimlanes.kidnapped.subdivisions.deceased.y : swimlanes.kidnapped.subdivisions.living.y;
+                
+                hostage.swimlaneHistory.push({
+                    date: CONFIG.TIMELINE.START_DATE,
+                    lane: initialLane,
+                    y: initialY,
+                    livingStatus: hostage.deathDate === CONFIG.TIMELINE.START_DATE ? 'deceased' : 'living'
+                });
+                
+                // Debug only Deal-related hostages
+                if (hostage.circumstances.includes('Deal')) {
+                    console.log(`[DEBUG] DEAL HOSTAGE ${index}: ${hostage.name}`);
+                    console.log(`[DEBUG]   Status: ${hostage.status}`);
+                    console.log(`[DEBUG]   Release Date: "${hostage.releaseDate}"`);
+                    console.log(`[DEBUG]   Circumstances: "${hostage.circumstances}"`);
+                    console.log(`[DEBUG]   Death Date: "${hostage.deathDate}"`);
+                    console.log(`[DEBUG]   Has Release Date: ${!!(hostage.releaseDate && hostage.releaseDate.trim() !== '')}`);
+                    
+                    // Special debugging for חן גולדשטיין אלמוג
+                    if (hostage.name.includes('חן גולדשטיין אלמוג')) {
+                        console.log(`[DEBUG] *** SPECIAL DEBUG FOR חן גולדשטיין אלמוג ***`);
+                        console.log(`[DEBUG]   Processed hostage data:`, hostage);
+                    }
+                }
+                
+                // Track death in captivity (move from living to deceased subdivision)
+                if (hostage.deathDate && hostage.deathDate !== CONFIG.TIMELINE.START_DATE && !hostage.releaseDate) {
+                    // Validate the death date
+                    const deathDateObj = new Date(hostage.deathDate);
+                    if (!isNaN(deathDateObj.getTime())) {
+                        // Add point in source lane at the exact moment before transition
+                        hostage.swimlaneHistory.push({
+                            date: hostage.deathDate,
+                            lane: 'kidnapped.living',
+                            y: swimlanes.kidnapped.subdivisions.living.y,
+                            livingStatus: 'living'
+                        });
+                        
+                        // Then immediately transition to deceased subdivision
+                        hostage.swimlaneHistory.push({
+                            date: hostage.deathDate,
+                            lane: 'kidnapped.deceased',
+                            y: swimlanes.kidnapped.subdivisions.deceased.y,
+                            livingStatus: 'deceased'
+                        });
+                    } else {
+                        console.log(`[DEBUG] Invalid death date for ${hostage.name}: "${hostage.deathDate}"`);
+                    }
+                }
+                
+                // Track releases (move from kidnapped to released)
+                // Check both releaseDate and status for released hostages
+                const hasReleaseDate = hostage.releaseDate && hostage.releaseDate.trim() !== '';
+                const isReleasedStatus = hostage.status === 'Released';
+                
+                // Debug hostages with November 2023 dates
+                if (hostage.releaseDate && hostage.releaseDate.includes('2023-11')) {
+                    console.log(`[RELEASE_DEBUG] November 2023 hostage: ${hostage.name}`);
+                    console.log(`[RELEASE_DEBUG] Release Date: "${hostage.releaseDate}"`);
+                    console.log(`[RELEASE_DEBUG] Status: "${hostage.status}"`);
+                    console.log(`[RELEASE_DEBUG] Circumstances: "${hostage.circumstances}"`);
+                    console.log(`[RELEASE_DEBUG] Has Release Date: ${hasReleaseDate}`);
+                    console.log(`[RELEASE_DEBUG] Is Released Status: ${isReleasedStatus}`);
+                    console.log(`[RELEASE_DEBUG] Will be moved to released lane: ${hasReleaseDate || isReleasedStatus}`);
+                }
+                
+                if (hasReleaseDate || isReleasedStatus) {
+                    console.log(`[DEBUG] PROCESSING RELEASE for ${hostage.name}: hasReleaseDate=${hasReleaseDate}, isReleasedStatus=${isReleasedStatus}`);
+                    
+                    // More comprehensive parsing of release circumstances
+                    const circumstances = hostage.circumstances || '';
+                    
+                    // Check for military rescue indicators
+                    const isMilitary = circumstances.includes('Military') || 
+                                     circumstances.includes('Rescue') ||
+                                     circumstances.includes('Returned in Military');
+                    
+                    // Check for deal indicators 
+                    const isDeal = circumstances.includes('Deal') || 
+                                  circumstances.includes('Released via Deal') ||
+                                  circumstances.includes('Returned in Deal');
+                    
+                    // Check if it's a body return
+                    const isBody = circumstances.includes('Body') || 
+                                  circumstances.includes('- Body');
+                    
+                    // Determine release method (default to deal if unclear)
+                    let releaseMethod;
+                    if (isMilitary) {
+                        releaseMethod = 'military';
+                    } else if (isDeal) {
+                        releaseMethod = 'deal';
+                    } else {
+                        // Default based on other indicators or guess
+                        releaseMethod = 'deal'; // Most releases were deals
+                        console.log(`[DEBUG] DEFAULTING to deal for ${hostage.name} - circumstances: "${circumstances}"`);
+                    }
+                    
+                    const lifeStatus = isBody ? 'deceased' : 'living';
+                    
+                    console.log(`[DEBUG] ${hostage.name}: Release method = ${releaseMethod}, Life status = ${lifeStatus}, Circumstances = "${circumstances}"`);
+                    
+                    // Special debugging for חן גולדשטיין אלמוג
+                    if (hostage.name.includes('חן גולדשטיין אלמוג')) {
+                        console.log(`[DEBUG] *** חן גולדשטיין אלמוג RELEASE PROCESSING ***`);
+                        console.log(`[DEBUG]   isMilitary: ${isMilitary}`);
+                        console.log(`[DEBUG]   isDeal: ${isDeal}`);
+                        console.log(`[DEBUG]   isBody: ${isBody}`);
+                        console.log(`[DEBUG]   releaseMethod: ${releaseMethod}`);
+                        console.log(`[DEBUG]   lifeStatus: ${lifeStatus}`);
+                        console.log(`[DEBUG]   Adding to lane: released.${releaseMethod}.${lifeStatus}`);
+                    }
+                    
+                    // Use a default release date if none provided but status is Released
+                    const releaseDate = hasReleaseDate ? hostage.releaseDate : '2023-11-24'; // Default to first deal date
+                    
+                    // Validate the date before using it
+                    const releaseDateObj = new Date(releaseDate);
+                    if (isNaN(releaseDateObj.getTime())) {
+                        console.log(`[DEBUG] Invalid release date for ${hostage.name}: "${releaseDate}"`);
+                        // Skip this release if date is invalid
+                        return;
+                    }
+                    
+                    // Determine current kidnapped subdivision before release
+                    const currentLivingStatus = isBody ? 'deceased' : 'living';
+                    const currentKidnappedLane = `kidnapped.${currentLivingStatus}`;
+                    const currentY = swimlanes.kidnapped.subdivisions[currentLivingStatus].y;
+                    
+                    // Add point in source lane at the exact moment before transition
+                    hostage.swimlaneHistory.push({
+                        date: releaseDate,
+                        lane: currentKidnappedLane,
+                        y: currentY,
+                        livingStatus: currentLivingStatus
+                    });
+                    
+                    // Then immediately transition to target lane
+                    hostage.swimlaneHistory.push({
+                        date: releaseDate,
+                        lane: `released.${releaseMethod}`,
+                        y: swimlanes.released.subdivisions[releaseMethod].y,
+                        livingStatus: isBody ? 'deceased' : 'living'
+                    });
+                } else if (hostage.circumstances && hostage.circumstances.includes('Deal')) {
+                    console.log(`[DEBUG] ERROR: ${hostage.name} has Deal in circumstances but no release date: "${hostage.releaseDate}"`);
+                    
+                    // Special debugging for חן גולדשטיין אלמוג
+                    if (hostage.name.includes('חן גולדשטיין אלמוג')) {
+                        console.log(`[DEBUG] *** חן גולדשטיין אלמוג ERROR - NO RELEASE DATE ***`);
+                        console.log(`[DEBUG]   This is why they're not shifting to released lane!`);
+                    }
+                }
+                
+                // Extend all lines to current date
+                const lastEvent = hostage.swimlaneHistory[hostage.swimlaneHistory.length - 1];
+                if (lastEvent.date !== CONFIG.TIMELINE.END_DATE) {
+                    hostage.swimlaneHistory.push({
+                        date: CONFIG.TIMELINE.END_DATE,
+                        lane: lastEvent.lane,
+                        y: lastEvent.y,
+                        livingStatus: lastEvent.livingStatus // Preserve living status
+                    });
+                }
+                
+                processedCount++;
+            });
+            
+            console.log(`[DEBUG] Processed ${processedCount} hostages for swimlane histories`);
+            
+            // Calculate maximum occupancy for each swimlane at any point in time
+            calculateSwimlaneCounts(swimlanes);
+            
+            // Calculate dynamic heights based on maximum occupancy
+            calculateDynamicHeights(swimlanes);
+            
+            return swimlanes;
+        }
+        
+        function calculateSwimlaneCounts(swimlanes) {
+            // Create timeline snapshots to count max occupancy
+            const timePoints = [];
+            hostageData.forEach(hostage => {
+                hostage.swimlaneHistory.forEach(event => {
+                    if (!timePoints.includes(event.date)) {
+                        timePoints.push(event.date);
+                    }
+                });
+            });
+            
+            timePoints.sort();
+            
+            // For each time point, count occupancy in each lane
+            timePoints.forEach(timePoint => {
+                const counts = {};
+                
+                hostageData.forEach(hostage => {
+                    const currentLane = getCurrentLaneAtTime(hostage, timePoint);
+                    if (currentLane) {
+                        counts[currentLane] = (counts[currentLane] || 0) + 1;
+                    }
+                });
+                
+                // Update max counts for subdivided structure
+                Object.keys(counts).forEach(laneKey => {
+                    if (laneKey.startsWith('kidnapped.')) {
+                        const subdivision = laneKey.split('.')[1]; // living or deceased
+                        swimlanes.kidnapped.subdivisions[subdivision].maxCount = Math.max(
+                            swimlanes.kidnapped.subdivisions[subdivision].maxCount || 0,
+                            counts[laneKey]
+                        );
+                    } else if (laneKey.startsWith('released.')) {
+                        const releasedType = laneKey.split('.')[1]; // military or deal
+                        swimlanes.released.subdivisions[releasedType].maxCount = Math.max(
+                            swimlanes.released.subdivisions[releasedType].maxCount || 0,
+                            counts[laneKey]
+                        );
+                    }
+                });
+            });
+        }
+        
+        function calculateDynamicHeights(swimlanes) {
+            // Simple proportional allocation based on max counts
+            const totalMilitary = swimlanes.released.subdivisions.military.maxCount;
+            const totalDeal = swimlanes.released.subdivisions.deal.maxCount;
+            const totalKidnappedLiving = swimlanes.kidnapped.subdivisions.living.maxCount;
+            const totalKidnappedDeceased = swimlanes.kidnapped.subdivisions.deceased.maxCount;
+            
+            // Calculate total hostages to determine proportions
+            const totalReleased = totalMilitary + totalDeal;
+            const totalKidnapped = totalKidnappedLiving + totalKidnappedDeceased;
+            const grandTotal = totalReleased + totalKidnapped;
+            
+            // Reserve space for gap and minimum heights
+            const gapHeight = 0.05;
+            const minSubHeight = 0.08;
+            const availableHeight = 1.0 - gapHeight;
+            
+            // Calculate proportional heights (but ensure minimums)
+            let releasedProportion = grandTotal > 0 ? totalReleased / grandTotal : 0.5;
+            let kidnappedProportion = grandTotal > 0 ? totalKidnapped / grandTotal : 0.5;
+            
+            // Ensure we don't exceed available space with minimums
+            let releasedHeight = Math.max(releasedProportion * availableHeight, minSubHeight * 2);
+            let kidnappedHeight = Math.max(kidnappedProportion * availableHeight, minSubHeight * 2);
+            
+            // Scale if total exceeds available
+            if (releasedHeight + kidnappedHeight > availableHeight) {
+                const scale = availableHeight / (releasedHeight + kidnappedHeight);
+                releasedHeight *= scale;
+                kidnappedHeight *= scale;
+            }
+            
+            // Distribute within released section
+            const militaryRatio = totalReleased > 0 ? totalMilitary / totalReleased : 0.3;
+            const dealRatio = totalReleased > 0 ? totalDeal / totalReleased : 0.7;
+            
+            const militaryHeight = Math.max(releasedHeight * militaryRatio, minSubHeight);
+            const dealHeight = Math.max(releasedHeight * dealRatio, minSubHeight);
+            
+            // Distribute within kidnapped section  
+            const livingRatio = totalKidnapped > 0 ? totalKidnappedLiving / totalKidnapped : 0.6;
+            const deceasedRatio = totalKidnapped > 0 ? totalKidnappedDeceased / totalKidnapped : 0.4;
+            
+            const livingHeight = Math.max(kidnappedHeight * livingRatio, minSubHeight);
+            const deceasedHeight = Math.max(kidnappedHeight * deceasedRatio, minSubHeight);
+            
+            // Set positions (Released at top, then gap, then Kidnapped)
+            swimlanes.released.y = 0;
+            swimlanes.released.height = releasedHeight;
+            swimlanes.released.subdivisions.military.y = 0;
+            swimlanes.released.subdivisions.military.height = militaryHeight;
+            swimlanes.released.subdivisions.deal.y = militaryHeight;
+            swimlanes.released.subdivisions.deal.height = dealHeight;
+            
+            const kidnappedStart = releasedHeight + gapHeight;
+            swimlanes.kidnapped.y = kidnappedStart;
+            swimlanes.kidnapped.height = kidnappedHeight;
+            swimlanes.kidnapped.subdivisions.living.y = kidnappedStart;
+            swimlanes.kidnapped.subdivisions.living.height = livingHeight;
+            swimlanes.kidnapped.subdivisions.deceased.y = kidnappedStart + livingHeight;
+            swimlanes.kidnapped.subdivisions.deceased.height = deceasedHeight;
+            
+            console.log('[DYNAMIC_HEIGHTS] Proportional Heights Set:');
+            console.log(`[DYNAMIC_HEIGHTS] Released (${totalReleased}): ${releasedHeight.toFixed(3)} | Military: ${militaryHeight.toFixed(3)}, Deal: ${dealHeight.toFixed(3)}`);
+            console.log(`[DYNAMIC_HEIGHTS] Gap: ${gapHeight.toFixed(3)}`);
+            console.log(`[DYNAMIC_HEIGHTS] Kidnapped (${totalKidnapped}): ${kidnappedHeight.toFixed(3)} | Living: ${livingHeight.toFixed(3)}, Deceased: ${deceasedHeight.toFixed(3)}`);
+        }
+        
+        function getCurrentLaneAtTime(hostage, targetTime) {
+            let currentLane = null;
+            
+            for (const event of hostage.swimlaneHistory) {
+                if (new Date(event.date) <= new Date(targetTime)) {
+                    currentLane = event.lane;
+                } else {
+                    break;
+                }
+            }
+            
+            return currentLane;
+        }
+        
+        function getFinalBatchIndex(batchType) {
+            const mapping = {
+                'held': 0,
+                'deal': 1,
+                'rescue': 2,
+                'deceased_returned': 3,
+                'deceased': 4
+            };
+            return mapping[batchType] ?? -1;
+        }
+        
+        function getBatchIndex(batchType) {
+            const mapping = {
+                'held': 0,
+                'deal': 1,
+                'rescue': 2,
+                'deceased_returned': 3,
+                'deceased': 4
+            };
+            return mapping[batchType] ?? -1;
+        }
+        
+        function renderSwimlaneDivisions(container, swimlanes, width, height) {
+            // Draw horizontal dividers and labels for swimlanes
+            
+            // MAJOR DIVISION: Released vs Kidnapped (dynamic position)
+            const divisionY = height * swimlanes.kidnapped.y;
+            svg.append('line')
+                .attr('x1', 0)
+                .attr('x2', width)
+                .attr('y1', divisionY)
+                .attr('y2', divisionY)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 3);
+            
+            // RELEASED SECTION (Upper) - Dynamic positioning
+            const releasedCenterY = swimlanes.released.y + (swimlanes.released.height / 2);
+            container.append('div')
+                .attr('class', 'swimlane-label major')
+                .style('position', 'absolute')
+                .style('right', '10px')
+                .style('top', `${height * releasedCenterY}px`)
+                .style('background', swimlanes.released.color)
+                .style('color', 'white')
+                .style('padding', '15px 25px')
+                .style('border-radius', '10px')
+                .style('font-size', '24px')
+                .style('font-weight', 'bold')
+                .text(swimlanes.released.name);
+            
+            // KIDNAPPED SECTION (Lower) - Dynamic positioning
+            const kidnappedCenterY = swimlanes.kidnapped.y + (swimlanes.kidnapped.height / 2);
+            container.append('div')
+                .attr('class', 'swimlane-label major')
+                .style('position', 'absolute')
+                .style('right', '10px')
+                .style('top', `${height * kidnappedCenterY}px`)
+                .style('background', swimlanes.kidnapped.color)
+                .style('color', 'white')
+                .style('padding', '15px 25px')
+                .style('border-radius', '10px')
+                .style('font-size', '24px')
+                .style('font-weight', 'bold')
+                .text(swimlanes.kidnapped.name);
+            
+            // SUBDIVISION LINES AND LABELS - Dynamic positioning
+            
+            // Subdivision line between released military and deal
+            const releasedDivisionY = height * swimlanes.released.subdivisions.deal.y;
+            svg.append('line')
+                .attr('x1', 0).attr('x2', width)
+                .attr('y1', releasedDivisionY)
+                .attr('y2', releasedDivisionY)
+                .attr('stroke', 'rgba(255,255,255,0.5)').attr('stroke-width', 1);
+            
+            // Subdivision line between kidnapped living and deceased
+            const kidnappedDivisionY = height * swimlanes.kidnapped.subdivisions.deceased.y;
+            svg.append('line')
+                .attr('x1', 0).attr('x2', width)
+                .attr('y1', kidnappedDivisionY)
+                .attr('y2', kidnappedDivisionY)
+                .attr('stroke', 'rgba(255,255,255,0.5)').attr('stroke-width', 1);
+            
+            // Add subdivision labels
+            container.append('div')
+                .style('position', 'absolute')
+                .style('right', '50px')
+                .style('top', `${height * 0.15}px`)
+                .style('background', swimlanes.released.subdivisions.military.color)
+                .style('color', 'white')
+                .style('padding', '8px 15px')
+                .style('border-radius', '8px')
+                .style('font-size', '16px')
+                .text(swimlanes.released.subdivisions.military.name);
+                
+            container.append('div')
+                .style('position', 'absolute')
+                .style('right', '50px')
+                .style('top', `${height * 0.45}px`)
+                .style('background', swimlanes.released.subdivisions.deal.color)
+                .style('color', 'white')
+                .style('padding', '8px 15px')
+                .style('border-radius', '8px')
+                .style('font-size', '16px')
+                .text(swimlanes.released.subdivisions.deal.name);
+                
+            // KIDNAPPED SECTION (Lower) - Main label
+            container.append('div')
+                .attr('class', 'swimlane-label major')
+                .style('position', 'absolute')
+                .style('right', '10px')
+                .style('top', `${height * 0.78}px`)
+                .style('background', swimlanes.kidnapped.color)
+                .style('color', 'white')
+                .style('padding', '15px 25px')
+                .style('border-radius', '12px')
+                .style('font-size', '18px')
+                .style('font-weight', 'bold')
+                .text(swimlanes.kidnapped.name);
+            
+            // Kidnapped subdivisions
+            container.append('div')
+                .style('position', 'absolute')
+                .style('right', '50px')
+                .style('top', `${height * 0.72}px`)
+                .style('background', swimlanes.kidnapped.subdivisions.living.color)
+                .style('color', 'white')
+                .style('padding', '8px 15px')
+                .style('border-radius', '8px')
+                .style('font-size', '16px')
+                .text(swimlanes.kidnapped.subdivisions.living.name);
+                
+            container.append('div')
+                .style('position', 'absolute')
+                .style('right', '50px')
+                .style('top', `${height * 0.88}px`)
+                .style('background', swimlanes.kidnapped.subdivisions.deceased.color)
+                .style('color', 'white')
+                .style('padding', '8px 15px')
+                .style('border-radius', '8px')
+                .style('font-size', '16px')
+                .text(swimlanes.kidnapped.subdivisions.deceased.name);
+        }
+        
+        function drawSwimlanePaths(swimlanes, width, height) {
+            // Draw individual hostage paths through swimlanes
+            let drawnCount = 0;
+            let dealCount = 0;
+            hostageData.forEach((hostage, index) => {
+                if (drawSwimlanePath(hostage, swimlanes, width, height)) {
+                    drawnCount++;
+                }
+                
+                if (hostage.circumstances.includes('Deal')) { 
+                    dealCount++;
+                    // Only log first 3 Deal hostages and any that stay in kidnapped lane
+                    if (dealCount <= 3 || hostage.swimlaneHistory[hostage.swimlaneHistory.length - 1].lane.startsWith('kidnapped')) {
+                        console.log(`[DEBUG] DEAL PATH ${index}: ${hostage.name}, Final lane: ${hostage.swimlaneHistory[hostage.swimlaneHistory.length - 1].lane}`);
+                    }
+                }
+            });
+            
+            console.log(`[DEBUG] Drew ${drawnCount}/${hostageData.length} paths, ${dealCount} Deal hostages processed`);
+        }
+        
+        function drawSwimlanePath(hostage, swimlanes, width, height) {
+            if (!hostage.swimlaneHistory || hostage.swimlaneHistory.length === 0) {
+                console.log(`[DEBUG] No swimlane history for hostage ${hostage.id}: ${hostage.name}`);
+                return false;
+            }
+            
+            // Create path through swimlanes with proper vertical spacing
+            const pathPoints = [];
+            
+            hostage.swimlaneHistory.forEach((event, index) => {
+                const x = xScale(new Date(event.date));
+                
+                // Calculate Y position with proper spacing within swimlane
+                const laneY = calculateLaneYPosition(hostage, event, swimlanes, height);
+                
+                pathPoints.push({ 
+                    x, 
+                    y: laneY, 
+                    date: event.date, 
+                    lane: event.lane 
+                });
+            });
+            
+            // Create smooth path connecting all points
+            const pathData = createSwimlanePath(pathPoints);
+            
+            // Determine line color based on final destination
+            const finalLane = pathPoints[pathPoints.length - 1].lane;
+            const lineColor = getLaneColor(finalLane, swimlanes);
+            
+            // Determine if this hostage is deceased (check final living status)
+            const finalEvent = hostage.swimlaneHistory[hostage.swimlaneHistory.length - 1];
+            const isDeceased = finalEvent.livingStatus === 'deceased';
+            
+            // Use global dash configuration
+            const dashSize = CONFIG.DASH_PATTERN.SIZE;
+            const dashGap = CONFIG.DASH_PATTERN.GAP;
+            const lineSpacing = CONFIG.DASH_PATTERN.LINE_SPACING;
+            
+
+            
+            const line = svg.append('path')
+                .attr('class', 'hostage-line swimlane-path')
+                .attr('d', pathData)
+                .attr('stroke', lineColor)
+                .attr('stroke-width', 1.5)
+                .attr('stroke-linecap', 'round')
+                .attr('stroke-linejoin', 'round')
+                .attr('stroke-dasharray', isDeceased ? `${dashSize},${dashGap}` : null) // Dynamic dash pattern for deceased
+                .attr('fill', 'none')
+                .attr('opacity', 0.8)
+                .attr('data-hostage-id', hostage.id)
+                .attr('data-hostage-name', hostage.name)
+                .on('mouseover', function(event) {
+                    d3.select(this).attr('stroke-width', 3).attr('opacity', 1);
+                    showTooltip(event, hostage);
+                })
+                .on('mouseout', function(event) {
+                    d3.select(this).attr('stroke-width', 1.5).attr('opacity', 0.8);
+                    hideTooltip();
+                });
+                
+            return true; // Successfully drew the path
+        }
+        
+        function calculateLaneYPosition(hostage, event, swimlanes, height) {
+            const lane = event.lane;
+            let laneConfig;
+            
+            if (lane.startsWith('kidnapped.')) {
+                const subdivision = lane.split('.')[1]; // living or deceased
+                laneConfig = swimlanes.kidnapped.subdivisions[subdivision];
+            } else if (lane.startsWith('released.')) {
+                const releasedType = lane.split('.')[1]; // military or deal
+                laneConfig = swimlanes.released.subdivisions[releasedType];
+            } else {
+                return height * 0.5; // Fallback
+            }
+            
+            // Get consistent position for this hostage in this specific lane
+            const lanePosition = getConsistentLanePosition(hostage, lane);
+            
+            // Calculate Y position with proper spacing within lane bounds
+            const laneHeight = laneConfig.height * height;
+            const laneTop = laneConfig.y * height;
+            
+            // Get total number of hostages that appear in this lane
+            const hostagesInLane = hostageData.filter(h => 
+                h.swimlaneHistory && h.swimlaneHistory.some(e => e.lane === lane)
+            ).length;
+            
+            // Calculate compact spacing within the lane
+            const usableHeight = laneHeight * 0.95; // Use 95% of lane height for lines
+            const marginTop = laneHeight * 0.025; // 2.5% margin at top
+            
+            // Debug output for spacing calculation (after marginTop is defined)
+            if (lane === 'kidnapped.living' && lanePosition < 3) {
+                console.log(`[COMPACT_DEBUG] ${hostage.name}: position ${lanePosition}, Y=${(laneTop + marginTop + (lanePosition * 2.5)).toFixed(1)}, spacing=2.5px`);
+            }
+            
+            // If only one hostage, center it
+            if (hostagesInLane <= 1) {
+                return laneTop + (laneHeight / 2);
+            }
+            
+            // Use very compact line spacing - pack lines tightly
+            const lineSpacing = 2.5; // Fixed 2.5px between lines
+            
+            // Position within lane with tight distribution
+            const yWithinLane = marginTop + (lanePosition * lineSpacing);
+            
+            // Ensure we don't exceed lane bounds - if too many lines, start overlapping slightly
+            const maxY = laneTop + laneHeight - 2;
+            if (yWithinLane > usableHeight) {
+                // If we have too many lines, compress them proportionally
+                const compressionRatio = usableHeight / (hostagesInLane * lineSpacing);
+                return laneTop + marginTop + (lanePosition * lineSpacing * compressionRatio);
+            }
+            
+            return laneTop + yWithinLane;
+        }
+        
+        function getConsistentLanePosition(hostage, lane) {
+            // Create a consistent cache key
+            const cacheKey = `${hostage.id}_${lane}`;
+            
+            // Force complete cache refresh for new spacing
+            window.lanePositionCache = { _timestamp: Date.now() };
+            window.laneCounters = {};
+            
+            // Get all hostages that ever appear in this lane and sort them consistently
+            const hostagesInLane = hostageData.filter(h => 
+                h.swimlaneHistory && h.swimlaneHistory.some(event => event.lane === lane)
+            ).sort((a, b) => {
+                // Special sorting for kidnapped.living lane: released first, then captive
+                if (lane === 'kidnapped.living') {
+                    // Simple check: does hostage have a valid release date?
+                    const aHasRelease = a.releaseDate && a.releaseDate.trim() !== '' && a.releaseDate !== 'nan';
+                    const bHasRelease = b.releaseDate && b.releaseDate.trim() !== '' && b.releaseDate !== 'nan';
+                    
+                    // RULE 1: Released hostages always come before captive ones
+                    if (aHasRelease && !bHasRelease) return -1;  // A released first
+                    if (!aHasRelease && bHasRelease) return 1;   // B released first
+                    
+                    // RULE 2: If both are released, sort by release date (earliest first)
+                    if (aHasRelease && bHasRelease) {
+                        try {
+                            const dateA = new Date(a.releaseDate);
+                            const dateB = new Date(b.releaseDate);
+                            return dateA - dateB;
+                        } catch (e) {
+                            // If date parsing fails, sort by name
+                            return a.name.localeCompare(b.name);
+                        }
+                    }
+                    
+                    // RULE 3: If both are still captive, sort by name
+                    return a.name.localeCompare(b.name);
+                }
+                
+                // Default sorting for other lanes (deceased first, then by release date, then name)
+                const aIsDeceased = a.deathDate === CONFIG.TIMELINE.START_DATE || a.deathDate;
+                const bIsDeceased = b.deathDate === CONFIG.TIMELINE.START_DATE || b.deathDate;
+                
+                if (aIsDeceased !== bIsDeceased) {
+                    return aIsDeceased ? 1 : -1;
+                }
+                
+                const releaseDateA = a.releaseDate;
+                const releaseDateB = b.releaseDate;
+                
+                if (releaseDateA && releaseDateB) {
+                    return new Date(releaseDateA) - new Date(releaseDateB);
+                }
+                if (releaseDateA && !releaseDateB) return -1;
+                if (!releaseDateA && releaseDateB) return 1;
+                
+                return a.name.localeCompare(b.name);
+            });
+            
+            // Debug final sorted order for kidnapped.living (simple check)
+            if (lane === 'kidnapped.living') {
+                console.log(`[FINAL_SORT] Lane ${lane} has ${hostagesInLane.length} hostages, first 3:`, 
+                    hostagesInLane.slice(0, 3).map(h => `${h.name}(${h.releaseDate || 'CAPTIVE'})`));
+            }
+            
+            // Find position of this hostage in the sorted list
+            const position = hostagesInLane.findIndex(h => h.id === hostage.id);
+            
+            // Cache the position
+            window.lanePositionCache[cacheKey] = position;
+            
+            return position;
+        }
+        
+        function getCurrentLivingStatusAtTime(hostage, targetTime) {
+            if (!hostage.swimlaneHistory || hostage.swimlaneHistory.length === 0) {
+                return 'living'; // Default
+            }
+            
+            const targetDate = new Date(targetTime);
+            let currentStatus = 'living';
+            
+            for (const event of hostage.swimlaneHistory) {
+                const eventDate = new Date(event.date);
+                if (eventDate <= targetDate && event.livingStatus) {
+                    currentStatus = event.livingStatus;
+                }
+            }
+            
+            return currentStatus;
+        }
+
+        function getHostagesInLaneAtTime(targetLane, targetDate) {
+            const hostagesInLane = [];
+            
+            hostageData.forEach(hostage => {
+                const currentLane = getCurrentLaneAtTime(hostage, targetDate);
+                if (currentLane === targetLane) {
+                    const livingStatus = getCurrentLivingStatusAtTime(hostage, targetDate);
+                    hostagesInLane.push({
+                        id: hostage.id,
+                        name: hostage.name,
+                        livingStatus: livingStatus
+                    });
+                }
+            });
+            
+            // Sort by living status (living first, then deceased), then by release date, then by name
+            hostagesInLane.sort((a, b) => {
+                // Primary sort: living status (living first, then deceased)
+                if (a.livingStatus !== b.livingStatus) {
+                    return a.livingStatus === 'living' ? -1 : 1;
+                }
+                
+                // Secondary sort: by release date (earliest releases first)
+                const hostageA = hostageData.find(h => h.id === a.id);
+                const hostageB = hostageData.find(h => h.id === b.id);
+                
+                const releaseDateA = hostageA?.releaseDate;
+                const releaseDateB = hostageB?.releaseDate;
+                
+                // Both have release dates - sort by date
+                if (releaseDateA && releaseDateB) {
+                    const dateA = new Date(releaseDateA);
+                    const dateB = new Date(releaseDateB);
+                    return dateA - dateB;
+                }
+                
+                // One has release date, one doesn't - released goes first
+                if (releaseDateA && !releaseDateB) return -1;
+                if (!releaseDateA && releaseDateB) return 1;
+                
+                // Neither has release date - sort by name
+                return a.name.localeCompare(b.name);
+            });
+            
+            return hostagesInLane.map(h => h.id); // Return just IDs
+        }
+        
+        function createSwimlanePath(points) {
+            if (points.length < 2) return '';
+            
+            let path = `M ${points[0].x} ${points[0].y}`;
+            
+            for (let i = 1; i < points.length; i++) {
+                const prev = points[i - 1];
+                const curr = points[i];
+                
+                // Create smooth transition between swimlanes
+                if (prev.y !== curr.y) {
+                    // Lane change - create curved transition
+                    const midX = (prev.x + curr.x) / 2;
+                    path += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
+                } else {
+                    // Same lane - straight line
+                    path += ` L ${curr.x} ${curr.y}`;
+                }
+            }
+            
+            return path;
+        }
+        
+        function getLaneColor(laneString, swimlanes) {
+            if (laneString.startsWith('kidnapped.')) {
+                const subdivision = laneString.split('.')[1]; // living or deceased
+                return swimlanes.kidnapped.subdivisions[subdivision].color;
+            } else if (laneString.startsWith('released.')) {
+                const releasedType = laneString.split('.')[1]; // military or deal
+                return swimlanes.released.subdivisions[releasedType].color;
+            }
+            
+            return '#6b7280'; // Default gray
+        }
+        
+        function drawSankeyLine(hostage, initialBatches, finalBatches, width, height, initialBatchHeight, finalBatchHeight) {
+            // Find initial batch position (RIGHT SIDE - Oct 7 status)
+            const initialBatchIndex = initialBatches.findIndex(b => b.type === hostage.initialBatch);
+            if (initialBatchIndex === -1) return;
+            
+            const initialBatchY = initialBatchIndex * initialBatchHeight + initialBatchHeight/2;
+            const initialHostageIndex = initialBatches[initialBatchIndex].hostages.findIndex(h => h.id === hostage.id);
+            const initialLineSpacing = Math.min(initialBatchHeight / (initialBatches[initialBatchIndex].hostages.length + 1), 4);
+            const startY = initialBatchY + (initialHostageIndex - initialBatches[initialBatchIndex].hostages.length/2) * initialLineSpacing;
+            
+            // Find final batch position (LEFT SIDE - current status)
+            const finalBatchIndex = finalBatches.findIndex(b => b.type === hostage.finalBatch);
+            if (finalBatchIndex === -1) return;
+            
+            const finalBatchY = finalBatchIndex * finalBatchHeight + finalBatchHeight/2;
+            const finalHostageIndex = finalBatches[finalBatchIndex].hostages.findIndex(h => h.id === hostage.id);
+            const finalLineSpacing = Math.min(finalBatchHeight / (finalBatches[finalBatchIndex].hostages.length + 1), 4);
+            const endY = finalBatchY + (finalHostageIndex - finalBatches[finalBatchIndex].hostages.length/2) * finalLineSpacing;
+            
+            // TIMELINE POSITIONING: Right (Oct 7) → Left (Current)
+            const oct7X = xScale(new Date(CONFIG.TIMELINE.START_DATE));     // Oct 7 position
+            const currentX = xScale(new Date(CONFIG.TIMELINE.END_DATE));    // Current date position
+            
+            // Event X position (when their status changed)
+            let eventX = currentX; // Default to current date
+            if (hostage.releaseDate) {
+                eventX = xScale(new Date(hostage.releaseDate));
+            } else if (hostage.deathDate && hostage.deathDate !== CONFIG.TIMELINE.START_DATE) {
+                eventX = xScale(new Date(hostage.deathDate));
+            }
+            
+            // Create timeline-based path: Oct7 → Event → Final
+            const path = createTimelinePath(oct7X, startY, eventX, endY, currentX, hostage);
+            
+            const line = svg.append('path')
+                .attr('class', 'hostage-line')
+                .attr('d', path)
+                .attr('stroke', finalBatches[finalBatchIndex].color)
+                .attr('stroke-width', 2)
+                .attr('fill', 'none')
+                .attr('opacity', 0.7)
+                .attr('data-hostage-id', hostage.id)
+                .on('mouseover', function(event) {
+                    d3.select(this).attr('stroke-width', 4).attr('opacity', 1);
+                    showTooltip(event, hostage);
+                })
+                .on('mouseout', function(event) {
+                    d3.select(this).attr('stroke-width', 2).attr('opacity', 0.7);
+                    hideTooltip();
+                });
+        }
+        
+        function calculateTransitionPoint(hostage, width) {
+            // Calculate X position based on when status changed
+            let transitionDate;
+            if (hostage.releaseDate) {
+                transitionDate = new Date(hostage.releaseDate);
+            } else if (hostage.deathDate && hostage.deathDate !== CONFIG.TIMELINE.START_DATE) {
+                transitionDate = new Date(hostage.deathDate);
+            } else {
+                transitionDate = new Date(); // Current date for ongoing captivity
+            }
+            
+            return xScale(transitionDate);
+        }
+        
+        function createTimelinePath(startX, startY, eventX, endY, finalX, hostage) {
+            // Timeline flow: Oct 7 (right) → Event date → Final destination (left)
+            
+            // For hostages who died on Oct 7 or are still held, go straight to end
+            if (eventX === startX || Math.abs(eventX - finalX) < 50) {
+                // Simple curve from start to end
+                const controlOffset = Math.abs(startX - finalX) * 0.4;
+                const midY = (startY + endY) / 2;
+                
+                return `M ${startX} ${startY}
+                        C ${startX - controlOffset} ${startY}, ${finalX + controlOffset} ${endY}, ${finalX} ${endY}`;
+            }
+            
+            // Two-stage path: Oct 7 → Event → Final destination
+            const midY = (startY + endY) / 2;
+            const control1 = startX - (startX - eventX) * 0.5;
+            const control2 = eventX - (eventX - finalX) * 0.5;
+            
+            return `M ${startX} ${startY}
+                    C ${control1} ${startY}, ${control1} ${midY}, ${eventX} ${midY}
+                    C ${control2} ${midY}, ${control2} ${endY}, ${finalX} ${endY}`;
+        }
+        
+        function drawRTLHostageLine(hostage, y, color) {
+            // RTL positioning: start from right (kidnapping) to left (current date/release)
+            const startX = xScale(new Date(hostage.kidnappedDate));
+            let endX = startX;
+            
+            // Determine end point based on status and dates
+            if (hostage.releaseDate) {
+                endX = xScale(new Date(hostage.releaseDate));
+            } else if (hostage.deathDate && hostage.deathDate !== CONFIG.TIMELINE.START_DATE) {
+                endX = xScale(new Date(hostage.deathDate));
+            } else {
+                endX = xScale(new Date(CONFIG.TIMELINE.END_DATE));
+            }
+            
+            // Create RTL subway-style path
+            const path = createRTLSubwayPath(startX, y, endX, y, hostage);
+            
+            const line = svg.append('path')
+                .attr('class', 'hostage-line')
+                .attr('d', path)
+                .attr('stroke', color)
+                .attr('data-hostage-id', hostage.id)
+                .on('mouseover', function(event) {
+                    showTooltip(event, hostage);
+                })
+                .on('mouseout', hideTooltip);
+        }
+        
+        function createRTLSubwayPath(startX, startY, endX, endY, hostage) {
+            // RTL-aware path creation with bezier curves
+            const midX = (startX + endX) / 2;
+            const controlPoint1X = startX - (startX - midX) * 0.3; // Adjusted for RTL
+            const controlPoint2X = endX + (midX - endX) * 0.3;   // Adjusted for RTL
+            
+            // Add slight vertical variation for visual separation
+            const yVariation = (Math.random() - 0.5) * 10;
+            const midY = startY + yVariation;
+            
+            return `M ${startX} ${startY} 
+                    Q ${controlPoint1X} ${midY} ${midX} ${midY}
+                    Q ${controlPoint2X} ${midY} ${endX} ${endY}`;
+        }
+        
+        function addRTLTimelineAxis(container, width, height) {
+            // Add timeline axis at bottom
+            const axisContainer = container.append('div')
+                .attr('class', 'timeline-axis')
+                .style('position', 'absolute')
+                .style('bottom', '0')
+                .style('width', '100%')
+                .style('height', '50px')
+                .style('background', 'rgba(0,0,0,0.3)')
+                .style('direction', 'rtl');
+            
+            // Key dates with Hebrew labels - showing chronological progression
+            const keyDates = [
+                { date: CONFIG.TIMELINE.START_DATE, label: '7 באוקטובר 2023' },
+                { date: '2023-11-24', label: 'עסקת נובמבר' },
+                { date: '2024-06-08', label: 'מבצע חילוץ' },
+                { date: '2025-01-19', label: 'עסקת השחרור' },
+                { date: CONFIG.TIMELINE.END_DATE, label: 'היום' }
+            ];
+            
+            // Add vertical grid lines to show timeline progression
+            svg.selectAll('.timeline-grid')
+                .data(keyDates)
+                .enter()
+                .append('line')
+                .attr('class', 'timeline-grid')
+                .attr('x1', d => xScale(new Date(d.date)))
+                .attr('x2', d => xScale(new Date(d.date)))
+                .attr('y1', 0)
+                .attr('y2', height - 50)
+                .attr('stroke', 'rgba(255,255,255,0.2)')
+                .attr('stroke-width', 1)
+                .attr('stroke-dasharray', '2,2');
+            
+            keyDates.forEach(keyDate => {
+                const x = xScale(new Date(keyDate.date));
+                axisContainer.append('div')
+                    .attr('class', 'date-marker')
+                    .style('position', 'absolute')
+                    .style('left', `${x - 50}px`)
+                    .style('top', '15px')
+                    .style('width', '100px')
+                    .style('text-align', 'center')
+                    .style('font-size', '12px')
+                    .style('font-weight', 'bold')
+                    .text(keyDate.label);
+            });
+        }
+        
+        function getBatchColor(type) {
+            const colors = {
+                'held': 'rgba(239, 68, 68, 0.8)',
+                'deal': 'rgba(34, 197, 94, 0.8)',
+                'rescue': 'rgba(59, 130, 246, 0.8)',
+                'deceased_returned': 'rgba(245, 158, 11, 0.8)',
+                'deceased': 'rgba(107, 114, 128, 0.8)'
+            };
+            return colors[type] || 'rgba(107, 114, 128, 0.8)';
+        }
+        
+        function drawHostageLines(batches, batchHeight) {
+            batches.forEach((batch, batchIndex) => {
+                const batchY = yScale(batchIndex);
+                const linesPerBatch = batch.hostages.length;
+                const lineSpacing = Math.min(batchHeight / (linesPerBatch + 1), 8);
+                
+                batch.hostages.forEach((hostage, hostageIndex) => {
+                    const y = batchY + (hostageIndex + 1) * lineSpacing;
+                    drawHostageLine(hostage, y, batch.color);
+                });
+            });
+        }
+        
+        function drawHostageLine(hostage, y, color) {
+            const startX = xScale(new Date('2023-10-07'));
+            let endX = startX;
+            
+            // Determine end point based on status
+            if (hostage.releaseDate) {
+                endX = xScale(new Date(hostage.releaseDate));
+            } else if (hostage.deathDate && hostage.deathDate !== '2023-10-07') {
+                endX = xScale(new Date(hostage.deathDate));
+            } else {
+                endX = xScale(new Date('2025-03-01')); // Current date for ongoing captivity
+            }
+            
+            // Create subway-style line with curves
+            const path = createSubwayPath(startX, y, endX, y, hostage);
+            
+            const line = svg.append('path')
+                .attr('class', 'hostage-line')
+                .attr('d', path)
+                .attr('stroke', color)
+                .attr('data-hostage-id', hostage.id)
+                .on('mouseover', function(event) {
+                    showTooltip(event, hostage);
+                })
+                .on('mouseout', hideTooltip);
+        }
+        
+        function createSubwayPath(startX, startY, endX, endY, hostage) {
+            const midX = (startX + endX) / 2;
+            const controlPoint1X = startX + (midX - startX) * 0.3;
+            const controlPoint2X = endX - (endX - midX) * 0.3;
+            
+            // Add slight vertical variation for visual interest
+            const yVariation = (Math.random() - 0.5) * 10;
+            const midY = startY + yVariation;
+            
+            return `M ${startX} ${startY} 
+                    Q ${controlPoint1X} ${midY} ${midX} ${midY}
+                    Q ${controlPoint2X} ${midY} ${endX} ${endY}`;
+        }
+        
+        function addTimelineAxis(width, height) {
+            const axisContainer = d3.select('#timeline').append('div')
+                .attr('class', 'timeline-axis');
+            
+            // Add key dates
+            const keyDates = [
+                { date: '2023-10-07', label: '7 באוקטובר' },
+                { date: '2023-11-24', label: 'עסקת נובמבר' },
+                { date: '2024-06-08', label: 'מבצע חילוץ' },
+                { date: '2025-01-19', label: 'עסקת השחרור' }
+            ];
+            
+            keyDates.forEach(keyDate => {
+                const x = xScale(new Date(keyDate.date));
+                axisContainer.append('div')
+                    .attr('class', 'date-marker')
+                    .style('left', `${x - 40}px`)
+                    .text(keyDate.label);
+            });
+        }
+        
+        // ===== RTL TOOLTIP AND INTERACTION =====
+        function showTooltip(event, hostage) {
+            const tooltip = d3.select('#tooltip');
+            
+            const tooltipHTML = createTooltipContent(hostage);
+            
+            // RTL tooltip positioning
+            const tooltipX = CONFIG.RTL ? event.pageX - 310 : event.pageX + 10; // Position to the left for RTL
+            
+            tooltip.html(tooltipHTML)
+                .style('right', CONFIG.RTL ? `${window.innerWidth - event.pageX + 10}px` : 'auto')
+                .style('left', CONFIG.RTL ? 'auto' : `${event.pageX + 10}px`)
+                .style('top', `${event.pageY - 10}px`)
+                .style('display', 'block');
+        }
+        
+        function createTooltipContent(hostage) {
+            return `
+                <div class="tooltip-name">${hostage.name}</div>
+                <div><strong>גיל:</strong> ${hostage.age}</div>
+                <div><strong>סטטוס:</strong> ${getHebrewStatus(hostage.status)}</div>
+                <div><strong>מיקום חטיפה:</strong> ${hostage.location}</div>
+                ${hostage.releaseDate ? `<div><strong>תאריך שחרור:</strong> ${formatHebrewDate(hostage.releaseDate)}</div>` : ''}
+                ${hostage.circumstances ? `<div><strong>נסיבות:</strong> ${hostage.circumstances}</div>` : ''}
+            `;
+        }
+        
+        function hideTooltip() {
+            d3.select('#tooltip').style('display', 'none');
+        }
+        
+        function getHebrewStatus(status) {
+            return CONFIG.HEBREW_STATUS_MAP[status] || status;
+        }
+        
+        function formatHebrewDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('he-IL', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+        
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('he-IL');
+        }
+        
+        // ===== STATISTICS AND UI UPDATES =====
+        function updateStatistics() {
+            const stats = calculateStatistics();
+            updateStatisticsDisplay(stats);
+        }
+        
+        function calculateStatistics() {
+            return {
+                total: hostageData.length,
+                held: hostageData.filter(h => h.finalBatch === 'held').length,
+                released: hostageData.filter(h => h.finalBatch === 'deal').length,
+                rescued: hostageData.filter(h => h.finalBatch === 'rescue').length,
+                deceased: hostageData.filter(h => h.finalBatch === 'deceased' || h.finalBatch === 'deceased_returned').length
+            };
+        }
+        
+        function updateStatisticsDisplay(stats) {
+            document.getElementById('totalCount').textContent = stats.total;
+            document.getElementById('heldCount').textContent = stats.held;
+            document.getElementById('releasedCount').textContent = stats.released;
+            document.getElementById('rescuedCount').textContent = stats.rescued;
+            document.getElementById('deceasedCount').textContent = stats.deceased;
+        }
+        
+        function setupEventHandlers() {
+            // Handle window resize with RTL considerations
+            window.addEventListener('resize', debounce(() => {
+                if (hostageData.length > 0) {
+                    createVisualization();
+                }
+            }, 250));
+        }
+        
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // ===== ANIMATION AND INTERACTION CONTROLS =====
+        function animateTimeline() {
+            if (isAnimating) return;
+            isAnimating = true;
+            
+            svg.selectAll('.hostage-line')
+                .style('opacity', 0.3)
+                .transition()
+                .duration(2000)
+                .delay((d, i) => i * 50)
+                .style('opacity', 1)
+                .on('end', () => {
+                    isAnimating = false;
+                });
+        }
+        
+        function resetTimeline() {
+            svg.selectAll('.hostage-line')
+                .style('opacity', 1)
+                .attr('stroke-width', 1.5);
+        }
+        
+        function highlightStatus(status) {
+            svg.selectAll('.hostage-line')
+                .style('opacity', 0.2)
+                .attr('stroke-width', 1);
+            
+            hostageData.forEach(hostage => {
+                if (hostage.status === status) {
+                    svg.select(`[data-hostage-id="${hostage.id}"]`)
+                        .style('opacity', 1)
+                        .attr('stroke-width', 3);
+                }
+            });
+        }
+        
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[INIT] Page loaded, starting data load...');
+            console.log('מאתחל ויזואליזציית החטופים...');
+            loadData();
+        });
+    </script>
+</body>
+</html>
+

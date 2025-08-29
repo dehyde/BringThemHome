@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>October 7 Hostages: Flowing Paths of Fate - 47 Still Held</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #1e293b;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            font-size: 20px;
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+        
+        .urgent-banner {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border-radius: 20px;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 32px rgba(239,68,68,0.3);
+            animation: urgentPulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes urgentPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 8px 32px rgba(239,68,68,0.3); }
+            50% { transform: scale(1.02); box-shadow: 0 12px 40px rgba(239,68,68,0.5); }
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 50px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 25px 30px;
+            border-radius: 15px;
+            min-width: 140px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-box:hover { transform: translateY(-5px); }
+        
+        .stat-number {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        
+        .held { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #dc2626; }
+        .released { background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #16a34a; }
+        .returned { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); color: #9333ea; }
+        .deceased { background: linear-gradient(135deg, #f8fafc, #e2e8f0); color: #475569; }
+        
+        .visualization-area {
+            background: linear-gradient(to bottom, #ffffff, #f8fafc);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .hostage-path {
+            fill: none;
+            stroke-width: 1.5;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+        
+        .hostage-path.urgent {
+            stroke-width: 2.5;
+            opacity: 1.0;
+            filter: drop-shadow(1px 1px 3px rgba(239,68,68,0.4));
+        }
+        
+        .hostage-path:hover {
+            stroke-width: 3.5;
+            opacity: 1.0;
+            filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.3));
+        }
+        
+        .group-node {
+            filter: drop-shadow(2px 2px 8px rgba(0,0,0,0.15));
+        }
+        
+        .group-rect {
+            rx: 12;
+            ry: 12;
+            stroke-width: 2;
+            stroke-opacity: 0.3;
+        }
+        
+        .group-rect.urgent {
+            stroke-width: 3;
+            stroke-opacity: 0.8;
+            filter: drop-shadow(0 0 15px rgba(239,68,68,0.6));
+            animation: urgentGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes urgentGlow {
+            from { filter: drop-shadow(0 0 15px rgba(239,68,68,0.6)); }
+            to { filter: drop-shadow(0 0 25px rgba(239,68,68,0.9)); }
+        }
+        
+        .group-label {
+            font-size: 16px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .group-count {
+            font-size: 22px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .timeline-label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #334155;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(30,41,59,0.95));
+            color: white;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            max-width: 300px;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">October 7 Hostages: Flowing Paths of Fate</div>
+            <div class="subtitle">Each curved line represents one hostage's journey from kidnapping to their current status</div>
+        </div>
+        
+        <div class="urgent-banner">
+            🚨 47 HOSTAGES STILL HELD IN GAZA 🚨<br>
+            <div style="font-size: 22px; margin-top: 15px; font-weight: normal;">
+                Every curved line matters - Every day counts - BRING THEM HOME
+            </div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-box released">
+                <div class="stat-number">135</div>
+                <div class="stat-label">Released</div>
+            </div>
+            <div class="stat-box held">
+                <div class="stat-number">47</div>
+                <div class="stat-label">Still Held</div>
+            </div>
+            <div class="stat-box returned">
+                <div class="stat-number">40</div>
+                <div class="stat-label">Bodies Returned</div>
+            </div>
+            <div class="stat-box deceased">
+                <div class="stat-number">18</div>
+                <div class="stat-label">Confirmed Dead</div>
+            </div>
+        </div>
+        
+        <div class="visualization-area">
+            <div id="visualization"></div>
+        </div>
+        
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <script>
+        const hostages = [{"id": 0, "name": "\u05d0\u05d9\u05dc\u05df \u05d5\u05d9\u05d9\u05e1", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2025-08-29", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 1, "name": "\u05d9\u05d5\u05e0\u05ea\u05df \u05e1\u05de\u05e8\u05e0\u05d5", "status": "Deceased - Returned", "death_context": "2024-06-15", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "Israel"}, {"id": 2, "name": "\u05e2\u05e4\u05e8\u05d4 \u05e7\u05d9\u05d3\u05e8", "status": "Deceased - Returned", "death_context": "2024-03-01", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "Israel"}, {"id": 3, "name": "\u05e9\u05d9 \u05dc\u05d5\u05d9\u05e0\u05e1\u05d5\u05df", "status": "Deceased - Returned", "death_context": "2024-03-01", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "Israel/Germany"}, {"id": 4, "name": "\u05d9\u05d0\u05d9\u05e8 \u05d9\u05e2\u05e7\u05d1", "status": "Deceased - Returned", "death_context": "2024-12-01", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "Israel"}, {"id": 5, "name": "\u05d0\u05d1\u05d9\u05d1 \u05d0\u05e6\u05d9\u05dc\u05d9", "status": "Deceased - Returned", "death_context": "2024-06-01", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "Israel/USA"}, {"id": 6, "name": "\u05e0\u05d8\u05e4\u05d5\u05e0\u05d2 \u05e4\u05d9\u05e0\u05d8\u05d4", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "Killed in captivity - first months", "release_date": "Body held", "release_circumstances": "Thailand"}, {"id": 7, "name": "\u05d2\u05f3\u05d5\u05d3\u05d9 \u05d5\u05d9\u05d9\u05e0\u05e9\u05d8\u05d9\u05d9\u05df ", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2025-06-05", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 8, "name": "\u05d2\u05d3\u05d9 \u05d7\u05d2\u05d9", "status": "Deceased - Returned", "death_context": "2025-06-05", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "USA/Israel"}, {"id": 9, "name": "\u05e2\u05d9\u05d3\u05df \u05d0\u05dc\u05db\u05e1\u05e0\u05d3\u05e8", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 10, "name": "\u05d0\u05d9\u05e6\u05d9\u05e7 \u05d0\u05dc\u05d2\u05e8\u05d8", "status": "Deceased", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2025-02-27", "release_circumstances": "Returned in Deal - Body"}, {"id": 11, "name": "\u05e9\u05dc\u05de\u05d4 \u05de\u05e0\u05e6\u05d5\u05e8", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2025-02-27", "release_circumstances": "Returned in Deal - Body"}, {"id": 12, "name": "\u05d0\u05d5\u05d4\u05d3 \u05d9\u05d4\u05dc\u05d5\u05de\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 13, "name": "\u05e6\u05d7\u05d9 \u05e2\u05d9\u05d3\u05df", "status": "Deceased", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2025-02-27", "release_circumstances": "Returned in Deal - Body"}, {"id": 14, "name": "\u05d4\u05d9\u05e9\u05d0\u05dd \u05d0-\u05e1\u05d9\u05d9\u05d3", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 15, "name": "\u05e2\u05d5\u05de\u05e8 \u05e9\u05dd \u05d8\u05d5\u05d1", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 16, "name": "\u05d0\u05dc\u05d9\u05d4 \u05db\u05d4\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 17, "name": "\u05e2\u05d5\u05de\u05e8 \u05d5\u05e0\u05e7\u05e8\u05d8", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 18, "name": "\u05d0\u05d1\u05e8\u05d4 \u05de\u05e0\u05d2\u05d9\u05e1\u05d8\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Released"}, {"id": 19, "name": "\u05d8\u05dc \u05e9\u05d4\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 20, "name": "\u05e9\u05d9\u05e8\u05d9 \u05d1\u05d9\u05d1\u05e1", "status": "Deceased", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Released"}, {"id": 21, "name": "\u05db\u05e4\u05d9\u05e8 \u05d1\u05d9\u05d1\u05e1", "status": "Deceased", "death_context": "2025-02-20", "death_date": "Killed in captivity by captors", "release_date": "Body held", "release_circumstances": "Qatar/Egypt/USA"}, {"id": 22, "name": "\u05d0\u05e8\u05d9\u05d0\u05dc \u05d1\u05d9\u05d1\u05e1", "status": "Deceased", "death_context": "Died in Captivity - Unknown Circumstances", "death_date": "Killed in captivity by captors", "release_date": "Body held", "release_circumstances": "Qatar/Egypt/USA"}, {"id": 23, "name": "\u05e2\u05d5\u05d3\u05d3 \u05dc\u05d9\u05e4\u05e9\u05d9\u05e5", "status": "Deceased", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2025-02-20", "release_circumstances": "Returned in Deal - Body"}, {"id": 24, "name": "\u05e9\u05d2\u05d9\u05d0 \u05d3\u05e7\u05dc \u05d7\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 25, "name": "\u05d9\u05d0\u05d9\u05e8 \u05d4\u05d5\u05e8\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 26, "name": "\u05e1\u05e9\u05d4 \u05d0\u05dc\u05db\u05e1\u05e0\u05d3\u05e8 \u05d8\u05e8\u05d5\u05e4\u05e0\u05d5\u05d1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 27, "name": "\u05d0\u05dc\u05d9 \u05e9\u05e8\u05e2\u05d1\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 28, "name": "\u05d0\u05d5\u05d4\u05d3 \u05d1\u05df \u05e2\u05de\u05d9", "status": "Released", "death_context": "2025-02-08", "death_date": "nan", "release_date": "Released via deal", "release_circumstances": "Qatar/Egypt"}, {"id": 29, "name": "\u05d0\u05d5\u05e8 \u05dc\u05d5\u05d9", "status": "Released", "death_context": "2024-07-01", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "Israel"}, {"id": 30, "name": "\u05e2\u05d5\u05e4\u05e8 \u05e7\u05dc\u05d3\u05e8\u05d5\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 31, "name": "\u05d9\u05e8\u05d3\u05df \u05d1\u05d9\u05d1\u05e1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 32, "name": "\u05e7\u05d9\u05ea' \u05e9\u05de\u05d5\u05d0\u05dc \u05e1\u05d9\u05d2\u05dc", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 33, "name": "\u05e1\u05d0\u05d8\u05d9\u05d0\u05df \u05e1\u05d5\u05d5\u05d0\u05e0\u05d0\u05e7\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 34, "name": "\u05d5\u05d5\u05d0\u05e6'\u05d0\u05e8\u05d4 \u05e1\u05e8\u05d9\u05d4\u05d0\u05d5\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 35, "name": "\u05e4\u05d5\u05e0\u05d2\u05e1\u05d0\u05e7 \u05d8\u05d4\u05e0\u05d4", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 36, "name": "\u05e1\u05d5\u05e8\u05d0\u05e1\u05d0\u05e7 \u05dc\u05d0\u05de\u05e0\u05d0\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 37, "name": "\u05d1\u05d0\u05e0\u05d0\u05d5\u05d5\u05d0\u05d8 \u05e1\u05d4\u05d8\u05d0\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 38, "name": "\u05d0\u05e8\u05d1\u05dc \u05d9\u05d4\u05d5\u05d3", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 39, "name": "\u05d2\u05d3\u05d9 \u05de\u05e9\u05d4 \u05de\u05d5\u05d6\u05e1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 40, "name": "\u05d0\u05d2\u05dd \u05d1\u05e8\u05d2\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 41, "name": "\u05dc\u05d9\u05e8\u05d9 \u05d0\u05dc\u05d1\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2025-01-25", "release_circumstances": "Released via deal"}, {"id": 42, "name": "\u05e7\u05e8\u05d9\u05e0\u05d4 \u05d0\u05e8\u05d9\u05d9\u05d1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 43, "name": "\u05e0\u05e2\u05de\u05d4 \u05dc\u05d5\u05d9", "status": "Released", "death_context": "2025-01-25", "death_date": "nan", "release_date": "Released via deal", "release_circumstances": "Qatar/Egypt/USA"}, {"id": 44, "name": "\u05d3\u05e0\u05d9\u05d0\u05dc\u05d4 \u05d2\u05dc\u05d1\u05d5\u05e2", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 45, "name": "\u05e8\u05d5\u05de\u05d9 \u05d2\u05d5\u05e0\u05df", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2025-01-19", "release_circumstances": "Released via deal"}, {"id": 46, "name": "\u05d3\u05d5\u05e8\u05d5\u05df \u05e9\u05d8\u05d9\u05d9\u05e0\u05d1\u05e8\u05db\u05e8", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2025-01-19", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 47, "name": "\u05d0\u05de\u05d9\u05dc\u05d9 \u05ea\u05d4\u05d9\u05dc\u05d4 \u05d3\u05de\u05d0\u05e8\u05d9", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2025-01-19", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 48, "name": "\u05d0\u05d5\u05e8\u05d5\u05df \u05e9\u05d0\u05d5\u05dc", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2014-07-20", "release_date": "2025-01-19", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 49, "name": "\u05d9\u05d5\u05e1\u05e3 \u05d0\u05dc\u05d6\u05d9\u05d0\u05d3\u05e0\u05d4", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by IDF", "death_date": "2023-10-07", "release_date": "2025-01-08", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 50, "name": "\u05d7\u05de\u05d6\u05d4 \u05d0\u05dc\u05d6\u05d9\u05d0\u05d3\u05e0\u05d4", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2025-01-10", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 51, "name": "\u05d7\u05e0\u05d4 \u05e7\u05e6\u05d9\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 52, "name": "\u05d0\u05d9\u05ea\u05d9 \u05e1\u05d1\u05d9\u05e8\u05e1\u05e7\u05d9", "status": "Deceased - Returned", "death_context": "2024-09-01", "death_date": "Killed during Oct 7 raids", "release_date": "Body held", "release_circumstances": "Israel"}, {"id": 53, "name": "\u05e2\u05d5\u05de\u05e8 \u05e0\u05d0\u05d5\u05d8\u05e8\u05d4", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 54, "name": "\u05e2\u05d9\u05d3\u05df \u05e9\u05ea\u05d9\u05d5\u05d9", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 55, "name": "\u05d1\u05d5\u05e0\u05d8\u05d5\u05dd \u05e4\u05e0\u05e7\u05d5\u05e0\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 56, "name": "\u05de\u05d5\u05e0\u05d2\u05e7\u05d5\u05dc \u05e4\u05d2'\u05d5\u05d0\u05d1\u05d5\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 57, "name": "\u05e0\u05d8\u05d5\u05d5\u05d0\u05e8\u05d9 \u05de\u05d5\u05dc\u05e7\u05d0\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 58, "name": "\u05e1\u05e0\u05d8\u05d9 \u05d1\u05d5\u05e0\u05e4\u05e8\u05d5\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 59, "name": "\u05db\u05e8\u05de\u05dc \u05d2\u05ea", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-09-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 60, "name": "\u05d4\u05d9\u05e8\u05e9 \u05d2\u05d5\u05dc\u05d3\u05d1\u05e8\u05d2 \u05e4\u05d5\u05dc\u05d9\u05df", "status": "Deceased - Returned", "death_context": "Died in Captivity - Unprovoked Execution", "death_date": "2023-10-07", "release_date": "2024-08-31", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 61, "name": "\u05e2\u05d3\u05df \u05d9\u05e8\u05d5\u05e9\u05dc\u05de\u05d9", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "Killed in captivity by captors", "release_date": "Still in captivity", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 62, "name": "\u05d0\u05dc\u05db\u05e1 \u05dc\u05d5\u05d1\u05e0\u05d5\u05d1", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-08-31", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 63, "name": "\u05d0\u05d5\u05e8\u05d9 \u05d3\u05e0\u05d9\u05e0\u05d5", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2024-08-31", "release_date": "2024-08-31", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 64, "name": "\u05d0\u05dc\u05de\u05d5\u05d2 \u05e1\u05e8\u05d5\u05e1\u05d9", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2024-08-31", "release_date": "2024-08-31", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 65, "name": "\u05e7\u05d0\u05d9\u05d3 \u05e4\u05e8\u05d7\u05d0\u05df \u05d0\u05dc\u05e7\u05d0\u05d3\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Military Operation"}, {"id": 66, "name": "\u05d0\u05d1\u05e8\u05d4\u05dd \u05de\u05d5\u05e0\u05d3\u05e8", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-08-20", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 67, "name": "\u05d9\u05d5\u05e8\u05dd \u05de\u05e6\u05d2\u05e8", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-08-20", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 68, "name": "\u05d0\u05dc\u05db\u05e1 \u05d3\u05e0\u05e6\u05d9\u05d2", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-08-20", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 69, "name": "\u05d9\u05d2\u05d1 \u05d1\u05d5\u05db\u05e9\u05d8\u05d1", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-08-19", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 70, "name": "\u05d7\u05d9\u05d9\u05dd \u05e4\u05e8\u05d9", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-08-20", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 71, "name": "\u05e0\u05d3\u05d1 \u05e4\u05d5\u05e4\u05dc\u05d5\u05d5\u05dc", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-08-19", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 72, "name": "\u05de\u05d9\u05d4 \u05d2\u05d5\u05e8\u05df", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-07-24", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 73, "name": "\u05e8\u05d1\u05d9\u05d3 \u05db\u05e5", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-07-24", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 74, "name": "\u05d0\u05d5\u05e8\u05df \u05d2\u05d5\u05dc\u05d3\u05d9\u05df", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 75, "name": "\u05de\u05d7\u05de\u05d3 \u05d0\u05dc\u05d0\u05d8\u05e8\u05e9", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 76, "name": "\u05e0\u05d5\u05e2\u05d4 \u05d0\u05e8\u05d2\u05de\u05e0\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2024-06-08", "release_circumstances": "Returned in Military Operation"}, {"id": 77, "name": "\u05d0\u05dc\u05de\u05d5\u05d2 \u05de\u05d0\u05d9\u05e8 \u05d2'\u05d0\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2024-06-08", "release_circumstances": "Returned in Military Operation"}, {"id": 78, "name": "\u05e9\u05dc\u05d5\u05de\u05d9 \u05d6\u05d9\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2024-06-08", "release_circumstances": "Returned in Military Operation"}, {"id": 79, "name": "\u05d0\u05e0\u05d3\u05e8\u05d9\u05d9 \u05e7\u05d5\u05d6\u05dc\u05d5\u05d1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2024-06-08", "release_circumstances": "Returned in Military Operation"}, {"id": 80, "name": "\u05e2\u05de\u05d9\u05e8\u05dd \u05e7\u05d5\u05e4\u05e8", "status": "Held in Gaza", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 81, "name": "\u05d7\u05e0\u05df \u05d9\u05d1\u05dc\u05d5\u05e0\u05e7\u05d4", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 82, "name": "\u05de\u05d9\u05e9\u05dc \u05e0\u05d9\u05e1\u05e0\u05d1\u05d0\u05d5\u05dd", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 83, "name": "\u05d0\u05d5\u05e8\u05d9\u05d5\u05df \u05d4\u05e8\u05e0\u05e0\u05d3\u05e1 \u05e8\u05d0\u05d3\u05d5", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 84, "name": "\u05e8\u05d5\u05df \u05d1\u05e0\u05d9\u05de\u05d9\u05df", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 85, "name": "\u05d0\u05d9\u05e6\u05d9\u05e7 \u05d2\u05dc\u05e8\u05e0\u05d8\u05e8", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 86, "name": "\u05e2\u05de\u05d9\u05ea \u05d1\u05d5\u05e1\u05e7\u05d9\u05dc\u05d4", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 87, "name": "\u05e1\u05d5\u05d3\u05ea\u05d9\u05e1\u05d0\u05e7 \u05e8\u05d9\u05e0\u05ea\u05dc\u05d0\u05e7", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 88, "name": "\u05e1\u05d5\u05e0\u05d8\u05d0\u05d9\u05d4 \u05d0\u05d5\u05e7\u05d0\u05e8\u05e1\u05e8\u05d9", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 89, "name": "\u05e9\u05e0\u05d9 \u05dc\u05d5\u05e7", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 90, "name": "\u05e8\u05d5\u05dd \u05d1\u05e8\u05e1\u05dc\u05d1\u05e1\u05e7\u05d9", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 91, "name": "\u05dc\u05d9\u05d0\u05d5\u05e8 \u05e8\u05d5\u05d3\u05d0\u05d9\u05e3", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 92, "name": "\u05d3\u05e8\u05d5\u05e8 \u05d0\u05d5\u05e8", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 93, "name": "\u05d0\u05e1\u05e3 \u05d7\u05de\u05de\u05d9", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 94, "name": "\u05ea\u05d5\u05de\u05e8 \u05d0\u05d7\u05d9\u05de\u05e1", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-07-24", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 95, "name": "\u05e7\u05d9\u05e8\u05d9\u05dc \u05d1\u05e8\u05d5\u05d3\u05e1\u05e7\u05d9", "status": "Deceased - Returned", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "2024-07-24", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 96, "name": "\u05d0\u05d1\u05d9\u05e0\u05ea\u05df \u05d0\u05d5\u05e8", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 97, "name": "\u05d0\u05dc\u05e2\u05d3 \u05e7\u05e6\u05d9\u05e8", "status": "Deceased - Returned", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "2024-12-01", "release_circumstances": "Returned in Military Operation - Body"}, {"id": 98, "name": "\u05d0\u05d5\u05e8\u05d9\u05d0\u05dc \u05d1\u05e8\u05d5\u05da", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 99, "name": "\u05e1\u05d0\u05de\u05e8 \u05e4\u05d5\u05d0\u05d3 \u05d0\u05dc-\u05d8\u05dc\u05d0\u05dc\u05e7\u05d4", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 100, "name": "\u05d3\u05e0\u05d9\u05d0\u05dc \u05e4\u05e8\u05e5", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 101, "name": "\u05d0\u05d9\u05ea\u05d9 \u05d7\u05df", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 102, "name": "\u05dc\u05d5\u05d0\u05d9\u05e1 \u05e0\u05d5\u05e8\u05d1\u05e8\u05d8\u05d5 \u05d4\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Military Operation"}, {"id": 103, "name": "\u05e4\u05e8\u05e0\u05e0\u05d3\u05d5 \u05de\u05e8\u05de\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Military Operation"}, {"id": 104, "name": "\u05de\u05e0\u05d9 \u05d2\u05d5\u05d3\u05d0\u05e8\u05d3", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 105, "name": "\u05e2\u05de\u05e8\u05d9 \u05de\u05d9\u05e8\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 106, "name": "\u05e8\u05df \u05d2\u05d5\u05d0\u05dc\u05d9", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 107, "name": "\u05d9\u05d5\u05e1\u05d9 \u05e9\u05e8\u05e2\u05d1\u05d9", "status": "Held in Gaza", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 108, "name": "\u05ea\u05de\u05d9\u05e8 \u05d0\u05d3\u05e8", "status": "Held in Gaza", "death_context": "2024-08-20", "death_date": "Killed during Oct 7 raids", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 109, "name": "\u05e2\u05d5\u05d6 \u05d3\u05e0\u05d9\u05d0\u05dc", "status": "Held in Gaza", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 110, "name": "\u05e9\u05d2\u05d1 \u05db\u05dc\u05e4\u05d5\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 111, "name": "\u05d0\u05d9\u05ea\u05df \u05d4\u05d5\u05e8\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 112, "name": "\u05d3\u05d5\u05d3 \u05e7\u05d5\u05e0\u05d9\u05d5", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 113, "name": "\u05d0\u05dc\u05e7\u05e0\u05d4 \u05d1\u05d5\u05d7\u05d1\u05d5\u05d8", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 114, "name": "\u05d0\u05d1\u05d9\u05ea\u05e8 \u05d3\u05d5\u05d3", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 115, "name": "\u05d1\u05d9\u05e4\u05d9\u05df \u05d2'\u05d5\u05e9\u05d9", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 116, "name": "\u05de\u05ea\u05df \u05e6\u05e0\u05d2\u05d0\u05d5\u05e7\u05e8", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 117, "name": "\u05d0\u05dc\u05d5\u05df \u05d0\u05d4\u05dc", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 118, "name": "\u05d9\u05d5\u05e1\u05e3 \u05d7\u05d9\u05d9\u05dd \u05d0\u05d5\u05d7\u05e0\u05d4", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 119, "name": "\u05d2\u05dc\u05d9 \u05d1\u05e8\u05de\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 120, "name": "\u05d6\u05d9\u05d5 \u05d1\u05e8\u05de\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 121, "name": "\u05d0\u05d9\u05ea\u05df \u05de\u05d5\u05e8", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 122, "name": "\u05d0\u05e8\u05d9\u05d0\u05dc \u05e7\u05d5\u05e0\u05d9\u05d5", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 123, "name": "\u05e0\u05de\u05e8\u05d5\u05d3 \u05db\u05d4\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 124, "name": "\u05de\u05ea\u05df \u05d0\u05e0\u05d2\u05e8\u05e1\u05d8", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 125, "name": "\u05ea\u05de\u05d9\u05e8 \u05e0\u05de\u05e8\u05d5\u05d3\u05d9", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 126, "name": "\u05de\u05e7\u05e1\u05d9\u05dd \u05d4\u05e8\u05e7\u05d9\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 127, "name": "\u05e1\u05e4\u05d9\u05e8 \u05db\u05d4\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 128, "name": "\u05d0\u05d5\u05e4\u05d9\u05e8 \u05d0\u05e0\u05d2\u05dc", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 129, "name": "\u05dc\u05d9\u05d0\u05dd \u05d0\u05d5\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 130, "name": "\u05d0\u05d9\u05ea\u05d9 \u05e8\u05d2\u05d1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 131, "name": "\u05e2\u05de\u05d9\u05ea \u05e1\u05d5\u05e1\u05e0\u05d4", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 132, "name": "\u05de\u05d9\u05d9\u05d4 \u05e9\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 133, "name": "\u05d1\u05d9\u05dc\u05d0\u05dc \u05d0\u05dc\u05d6\u05d9\u05d0\u05d3\u05e0\u05d4", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 134, "name": "\u05e2\u05d0\u05d9\u05e9\u05d4 \u05d0\u05dc\u05d6\u05d9\u05d0\u05d3\u05e0\u05d4", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 135, "name": "\u05d0\u05d9\u05dc\u05e0\u05d4 \u05d2\u05e8\u05d9\u05e6\u05d1\u05e1\u05e7\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-12-01", "release_circumstances": "Returned in Deal"}, {"id": 136, "name": "\u05e0\u05d9\u05dc\u05d9 \u05de\u05e8\u05d2\u05dc\u05d9\u05ea", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 137, "name": "\u05e9\u05e0\u05d9 \u05d2\u05d5\u05e8\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 138, "name": "\u05d9\u05dc\u05e0\u05d4 \u05d8\u05e8\u05d5\u05e4\u05e0\u05d5\u05d1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 139, "name": "\u05d0\u05d9\u05e8\u05e0\u05d4 \u05d8\u05d8\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 140, "name": "\u05d9\u05e8\u05d3\u05df \u05e8\u05d5\u05de\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 141, "name": "\u05d2\u05dc\u05d9 \u05d8\u05e8\u05e9\u05e0\u05e1\u05e7\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 142, "name": "\u05dc\u05d9\u05d0\u05ea \u05d0\u05e6\u05d9\u05dc\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 143, "name": "\u05de\u05d5\u05e8\u05df \u05d9\u05e0\u05d0\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 144, "name": "\u05e2\u05de\u05d9\u05ea \u05e9\u05e0\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 145, "name": "\u05e8\u05d6 \u05d1\u05df \u05e2\u05de\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 146, "name": "\u05e8\u05e2\u05d9\u05d4 \u05e8\u05d5\u05ea\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 147, "name": "\u05d2\u05d1\u05e8\u05d9\u05d0\u05dc\u05d4 \u05dc\u05d9\u05d9\u05de\u05d1\u05e8\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 148, "name": "\u05e7\u05dc\u05e8\u05d4 \u05de\u05e8\u05de\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 149, "name": "\u05d0\u05d5\u05e4\u05dc\u05d9\u05d4 \u05e8\u05d5\u05d9\u05d8\u05de\u05df ", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 150, "name": "\u05de\u05d9\u05e8\u05d1 \u05d8\u05dc", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 151, "name": "\u05d3\u05d9\u05e6\u05d4 \u05d4\u05d9\u05d9\u05de\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 152, "name": "\u05de\u05d9\u05d0\u05d4 \u05dc\u05d9\u05d9\u05de\u05d1\u05e8\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 153, "name": "\u05e2\u05d3\u05d4 \u05e9\u05d2\u05d9\u05d0", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 154, "name": "\u05e8\u05d9\u05de\u05d5\u05df \u05e7\u05d9\u05e8\u05e9\u05d8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 155, "name": "\u05e0\u05d5\u05e8\u05dc\u05d9\u05df \u05d1\u05d1\u05d3\u05d9\u05dc\u05d4 \u05d0\u05d2\u05d5\u05d2'\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 156, "name": "\u05ea\u05de\u05e8 \u05de\u05e6\u05d2\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 157, "name": "\u05d9\u05d5\u05d1\u05dc \u05d0\u05e0\u05d2\u05dc", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 158, "name": "\u05d9\u05d2\u05d9\u05dc \u05d9\u05e2\u05e7\u05d1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 159, "name": "\u05d0\u05d5\u05e8 \u05d9\u05e2\u05e7\u05d1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 160, "name": "\u05d0\u05e8\u05d6 \u05e7\u05dc\u05d3\u05e8\u05d5\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 161, "name": "\u05e1\u05d4\u05e8 \u05e7\u05dc\u05d3\u05e8\u05d5\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 162, "name": "\u05d0\u05de\u05d4 \u05e7\u05d5\u05e0\u05d9\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 163, "name": "\u05d9\u05d5\u05dc\u05d9 \u05e7\u05d5\u05e0\u05d9\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 164, "name": "\u05e9\u05e8\u05d5\u05df \u05d0\u05dc\u05d5\u05e0\u05d9 \u05e7\u05d5\u05e0\u05d9\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 165, "name": "\u05de\u05d9\u05e7\u05d4 \u05d0\u05e0\u05d2\u05dc", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 166, "name": "\u05e7\u05e8\u05d9\u05e0\u05d4 \u05d0\u05e0\u05d2\u05dc-\u05d1\u05e8\u05d8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 167, "name": "\u05d8\u05dc \u05d2\u05d5\u05dc\u05d3\u05e9\u05d8\u05d9\u05d9\u05df \u05d0\u05dc\u05de\u05d5\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 168, "name": "\u05d2\u05dc \u05d2\u05d5\u05dc\u05d3\u05e9\u05d8\u05d9\u05d9\u05df \u05d0\u05dc\u05de\u05d5\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 169, "name": "\u05d0\u05d2\u05dd \u05d2\u05d5\u05dc\u05d3\u05e9\u05d8\u05d9\u05d9\u05df \u05d0\u05dc\u05de\u05d5\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 170, "name": "\u05d7\u05df \u05d2\u05d5\u05dc\u05d3\u05e9\u05d8\u05d9\u05d9\u05df \u05d0\u05dc\u05de\u05d5\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 171, "name": "\u05d0\u05d1\u05d9\u05d2\u05d9\u05dc \u05e2\u05d9\u05d3\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 172, "name": "\u05d0\u05d5\u05e8\u05d9\u05d4 \u05d1\u05e8\u05d5\u05d3\u05e5'", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 173, "name": "\u05e2\u05e4\u05e8\u05d9 \u05d1\u05e8\u05d5\u05d3\u05e5'", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 174, "name": "\u05d4\u05d2\u05e8 \u05d1\u05e8\u05d5\u05d3\u05e5'", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 175, "name": "\u05d9\u05d5\u05d1\u05dc \u05d1\u05e8\u05d5\u05d3\u05e5'", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 176, "name": "\u05d0\u05dc\u05de\u05d4 \u05d0\u05d1\u05e8\u05d4\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 177, "name": "\u05d0\u05d5\u05d8\u05d0\u05d9 \u05d8\u05d5\u05e0\u05e1\u05e8\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 178, "name": "\u05e6'\u05dc\u05e8\u05de\u05e6'\u05d0\u05d9 \u05e1\u05d0\u05d0\u05e0\u05d2\u05e7\u05d0\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 179, "name": "\u05d1\u05d5\u05d3\u05d9 \u05e1\u05d0\u05d0\u05e0\u05d2\u05d1\u05d5\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 180, "name": "\u05d0\u05d5\u05d8\u05d0\u05d9 \u05e1\u05d0\u05d0\u05e0\u05d2\u05d5\u05d5\u05d0\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 181, "name": "\u05de\u05d0\u05e0\u05d9 \u05d2'\u05d9\u05e8\u05e6'\u05d0\u05d8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 182, "name": "\u05e4\u05d0\u05d9\u05d1\u05d5\u05df \u05e8\u05d8\u05d0\u05e0\u05d9\u05dc", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 183, "name": "\u05d5\u05d5\u05d9\u05e6'\u05d9\u05d0\u05df \u05d8\u05de\u05d8\u05d5\u05e0\u05d2", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 184, "name": "\u05d0\u05e0\u05d5\u05e6'\u05d4 \u05d0\u05e0\u05d2\u05e7\u05d0\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 185, "name": "\u05d0\u05d1\u05d9\u05d1\u05d4 \u05d0\u05d3\u05e8\u05d9\u05d0\u05df \u05e1\u05d9\u05d2\u05dc", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 186, "name": "\u05d3\u05e4\u05e0\u05d4 \u05d0\u05dc\u05d9\u05e7\u05d9\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 187, "name": "\u05d0\u05dc\u05d4 \u05d0\u05dc\u05d9\u05e7\u05d9\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 188, "name": "\u05e8\u05d5\u05e0\u05d9 \u05e7\u05e8\u05d9\u05d1\u05d5\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 189, "name": "\u05e0\u05d8\u05d4\u05d0\u05e4\u05d5\u05df \u05d0\u05d5\u05e0\u05e7\u05d0\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 190, "name": "\u05e7\u05d5\u05de\u05e7\u05e8\u05d9\u05d8 \u05e6'\u05d5\u05de\u05d1\u05d5\u05d0\u05d4", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 191, "name": "\u05d0\u05de\u05d9\u05dc\u05d9 \u05d4\u05e0\u05d3", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 192, "name": "\u05e9\u05d9\u05e8\u05d9 \u05d5\u05d9\u05d9\u05e1 ", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 193, "name": "\u05e0\u05d2\u05d4 \u05d5\u05d9\u05d9\u05e1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 194, "name": "\u05e0\u05d5\u05e2\u05dd \u05d0\u05d5\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 195, "name": "\u05e2\u05dc\u05de\u05d4 \u05d0\u05d5\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 196, "name": "\u05de\u05d9\u05d4 \u05e8\u05d2\u05d1", "status": "Released", "death_context": "2023-11-29", "death_date": "nan", "release_date": "Released via deal", "release_circumstances": "Qatar/Egypt"}, {"id": 197, "name": "\u05e0\u05d5\u05e2\u05dd \u05d0\u05d1\u05d9\u05d2\u05d3\u05d5\u05e8\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 198, "name": "\u05e9\u05e8\u05d5\u05df \u05d0\u05d1\u05d9\u05d2\u05d3\u05d5\u05e8\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 199, "name": "\u05e9\u05d5\u05e9\u05df \u05d4\u05e8\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 200, "name": "\u05d4\u05d9\u05dc\u05d4 \u05e8\u05d5\u05ea\u05dd \u05e9\u05d5\u05e9\u05e0\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 201, "name": "\u05e2\u05d3\u05d9 \u05e9\u05d5\u05d4\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 202, "name": "\u05e0\u05d5\u05d5\u05d4 \u05e9\u05d5\u05d4\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 203, "name": "\u05d9\u05d4\u05dc \u05e9\u05d5\u05d4\u05dd", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 204, "name": "\u05d1\u05e0\u05e6'\u05d4 \u05e7\u05d5\u05e0\u05d2\u05de\u05d0\u05e0\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Deal"}, {"id": 205, "name": "\u05d5\u05d5\u05d9\u05e6'\u05d0\u05d9 \u05e7\u05dc\u05d0\u05e4\u05d0\u05d8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 206, "name": "\u05d5\u05d5\u05d9\u05d8\u05d5\u05df \u05e4\u05d5\u05de\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 207, "name": "\u05d2\u05dc\u05d9\u05d9\u05e0\u05d5\u05e8 (\u05d2'\u05d9\u05de\u05d9) \u05e4\u05d0\u05e6'\u05e7\u05d5", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 208, "name": "\u05d7\u05e0\u05d4 \u05e4\u05e8\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 209, "name": "\u05d9\u05e4\u05d4 \u05d0\u05d3\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 210, "name": "\u05e7\u05e8\u05df \u05de\u05d5\u05e0\u05d3\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 211, "name": "\u05e8\u05d5\u05ea\u05d9 \u05de\u05d5\u05e0\u05d3\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 212, "name": "\u05d0\u05d5\u05d4\u05d3 \u05de\u05d5\u05e0\u05d3\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 213, "name": "\u05d0\u05de\u05d9\u05dc\u05d9\u05d4 \u05d0\u05dc\u05d5\u05e0\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 214, "name": "\u05d3\u05e0\u05d9\u05d0\u05dc \u05d0\u05dc\u05d5\u05e0\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 215, "name": "\u05de\u05e8\u05d2\u05dc\u05d9\u05ea \u05de\u05d5\u05d6\u05e1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 216, "name": "\u05e2\u05d3\u05d9\u05e0\u05d4 \u05de\u05e9\u05d4", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 217, "name": "\u05e8\u05d6 \u05db\u05e5 \u05d0\u05e9\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 218, "name": "\u05d0\u05d1\u05d9\u05d1 \u05db\u05e5 \u05d0\u05e9\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 219, "name": "\u05d3\u05d5\u05e8\u05d5\u05df \u05db\u05e5 \u05d0\u05e9\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 220, "name": "\u05d0\u05d5\u05e4\u05d9\u05e8 \u05e6\u05e8\u05e4\u05ea\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 221, "name": "\u05e8\u05d5\u05df \u05e9\u05e8\u05de\u05df", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 222, "name": "\u05e0\u05d9\u05e7 \u05d1\u05d9\u05d9\u05d6\u05e8", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 223, "name": "\u05e2\u05d3\u05df \u05d6\u05db\u05e8\u05d9\u05d4", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 224, "name": "\u05d0\u05dc\u05d9\u05d4 \u05d8\u05d5\u05dc\u05d3\u05e0\u05d5", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 225, "name": "\u05d9\u05d5\u05ea\u05dd \u05d7\u05d9\u05d9\u05dd", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 226, "name": "\u05d0\u05dc\u05d5\u05df \u05dc\u05d5\u05dc\u05d5 \u05e9\u05de\u05e8\u05d9\u05d6", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 227, "name": "\u05e2\u05e0\u05d1\u05e8 \u05d4\u05d9\u05de\u05df", "status": "Held in Gaza", "death_context": "Died in Captivity - Killed by Hamas", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 228, "name": "\u05d8\u05dc \u05d7\u05d9\u05d9\u05de\u05d9", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 229, "name": "\u05d6\u05d9\u05d5 \u05d3\u05d3\u05d5", "status": "Released", "death_context": "Died Before/During Kidnapping", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 230, "name": "\u05d9\u05d4\u05d5\u05d3\u05d9\u05ea \u05d5\u05d9\u05d9\u05e1", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Released via Deal"}, {"id": 231, "name": "\u05d9\u05d4\u05d5\u05d3\u05d9\u05ea \u05e8\u05e2\u05e0\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 232, "name": "\u05e0\u05d8\u05dc\u05d9 \u05e8\u05e2\u05e0\u05df", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 233, "name": "\u05d0\u05d5\u05e8\u05d9 \u05de\u05d2\u05d9\u05d3\u05d9\u05e9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "2023-11-24", "release_circumstances": "Returned in Military Operation"}, {"id": 234, "name": "\u05d9\u05d5\u05db\u05d1\u05d3 \u05dc\u05d9\u05e4\u05e9\u05d9\u05e5", "status": "Released", "death_context": "2023-10-24", "death_date": "nan", "release_date": "Released via deal", "release_circumstances": "Qatar/Egypt"}, {"id": 235, "name": "\u05d1\u05e8 \u05e7\u05d5\u05e4\u05e8\u05e9\u05d8\u05d9\u05d9\u05df", "status": "Held in Gaza", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 236, "name": "\u05e0\u05d5\u05e2\u05d4 \u05de\u05e8\u05e6\u05d9\u05d0\u05e0\u05d5", "status": "Deceased", "death_context": "Died Before/During Kidnapping", "death_date": "2023-10-07", "release_date": "nan", "release_circumstances": "nan"}, {"id": 237, "name": "\u05e0\u05d5\u05e8\u05d9\u05ea \u05e7\u05d5\u05e4\u05e8", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}, {"id": 238, "name": "\u05d4\u05d3\u05e8 \u05d2\u05d5\u05dc\u05d3\u05d9\u05df", "status": "Held in Gaza", "death_context": "Killed during 2014 Gaza war", "death_date": "2014-08-01", "release_date": "nan", "release_circumstances": "Currently Held Captive"}, {"id": 239, "name": "\u05d0\u05d9\u05ea\u05df \u05d9\u05d4\u05dc\u05d5\u05de\u05d9", "status": "Released", "death_context": "nan", "death_date": "nan", "release_date": "nan", "release_circumstances": "Returned in Deal"}];
+        
+        const margin = {top: 40, right: 40, bottom: 40, left: 40};
+        const width = 1400 - margin.left - margin.right;
+        const height = 900 - margin.top - margin.bottom;
+        
+        const svg = d3.select("#visualization")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom);
+            
+        const g = svg.append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+        
+        // Colors for different statuses
+        const statusColors = {
+            'Held in Gaza': '#ef4444',
+            'Released': '#22c55e',
+            'Deceased': '#6b7280',
+            'Deceased - Returned': '#a855f7'
+        };
+        
+        // Define the flow stages and their positions
+        const stages = [
+            { id: 'start', label: 'Oct 7, 2023\nKIDNAPPED', x: 100, y: height / 2, width: 120 },
+            { id: 'end_groups', x: width - 200, y: 150, groupHeight: 120, groupGap: 30 }
+        ];
+        
+        // Group hostages by their final status
+        const statusGroups = {};
+        const groupOrder = ['Released', 'Held in Gaza', 'Deceased - Returned', 'Deceased'];
+        
+        hostages.forEach(hostage => {
+            const status = hostage.status;
+            if (!statusGroups[status]) {
+                statusGroups[status] = [];
+            }
+            statusGroups[status].push(hostage);
+        });
+        
+        // Calculate group positions
+        const groups = [];
+        let currentY = 80;
+        
+        groupOrder.forEach(status => {
+            if (statusGroups[status] && statusGroups[status].length > 0) {
+                const count = statusGroups[status].length;
+                const groupHeight = Math.max(80, count * 1.8);
+                
+                groups.push({
+                    id: status,
+                    label: status,
+                    count: count,
+                    x: stages[1].x,
+                    y: currentY,
+                    width: 180,
+                    height: groupHeight,
+                    color: statusColors[status],
+                    hostages: statusGroups[status],
+                    urgent: status === 'Held in Gaza'
+                });
+                
+                currentY += groupHeight + 25;
+            }
+        });
+        
+        // Draw the start point
+        const startGroup = g.append("g").attr("class", "group-node");
+        
+        startGroup.append("rect")
+            .attr("class", "group-rect")
+            .attr("x", stages[0].x - stages[0].width/2)
+            .attr("y", stages[0].y - 40)
+            .attr("width", stages[0].width)
+            .attr("height", 80)
+            .attr("fill", "#1e293b")
+            .attr("stroke", "#334155");
+        
+        startGroup.append("text")
+            .attr("class", "group-count")
+            .attr("x", stages[0].x)
+            .attr("y", stages[0].y - 10)
+            .text("240");
+            
+        startGroup.append("text")
+            .attr("class", "group-label")
+            .attr("x", stages[0].x)
+            .attr("y", stages[0].y + 15)
+            .attr("font-size", "14px")
+            .text("KIDNAPPED");
+        
+        // Draw the end groups
+        groups.forEach(group => {
+            const groupNode = g.append("g").attr("class", "group-node");
+            
+            groupNode.append("rect")
+                .attr("class", `group-rect ${group.urgent ? 'urgent' : ''}`)
+                .attr("x", group.x - group.width/2)
+                .attr("y", group.y - group.height/2)
+                .attr("width", group.width)
+                .attr("height", group.height)
+                .attr("fill", group.color)
+                .attr("stroke", d3.color(group.color).darker(0.5));
+            
+            groupNode.append("text")
+                .attr("class", "group-count")
+                .attr("x", group.x)
+                .attr("y", group.y - 15)
+                .text(group.count);
+                
+            groupNode.append("text")
+                .attr("class", "group-label")
+                .attr("x", group.x)
+                .attr("y", group.y + 10)
+                .attr("font-size", group.urgent ? "16px" : "14px")
+                .text(group.label);
+                
+            if (group.urgent) {
+                groupNode.append("text")
+                    .attr("class", "group-label")
+                    .attr("x", group.x)
+                    .attr("y", group.y + 30)
+                    .attr("font-size", "12px")
+                    .text("🚨 URGENT 🚨");
+            }
+        });
+        
+        // Draw flowing curves for each hostage
+        let pathIndex = 0;
+        groups.forEach(group => {
+            group.hostages.forEach((hostage, i) => {
+                // Calculate start and end positions
+                const startX = stages[0].x + stages[0].width/2;
+                const startY = stages[0].y + (Math.random() - 0.5) * 60; // Small random spread
+                
+                const endX = group.x - group.width/2;
+                const endY = group.y - group.height/2 + (i / group.count) * group.height + group.height/group.count/2;
+                
+                // Create smooth curved path
+                const midX = startX + (endX - startX) * 0.6;
+                const midY = startY + (endY - startY) * 0.3;
+                
+                const path = d3.path();
+                path.moveTo(startX, startY);
+                path.bezierCurveTo(
+                    startX + 150, startY, // Control point 1
+                    midX, midY,           // Control point 2
+                    endX, endY            // End point
+                );
+                
+                g.append("path")
+                    .attr("class", `hostage-path ${group.urgent ? 'urgent' : ''}`)
+                    .attr("d", path.toString())
+                    .attr("stroke", group.color)
+                    .style("cursor", "pointer")
+                    .on("mouseover", function(event) {
+                        d3.select(this).classed("highlight", true);
+                        
+                        d3.select("#tooltip")
+                            .style("opacity", 1)
+                            .style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 15) + "px")
+                            .html(`
+                                <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: ${group.color};">
+                                    ${hostage.name}
+                                </div>
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Status:</strong> <span style="color: ${group.color};">${hostage.status}</span>
+                                </div>
+                                ${hostage.status === 'Held in Gaza' ? 
+                                    '<div style="color: #ef4444; font-weight: bold; font-size: 16px; margin: 10px 0; text-align: center;">🚨 STILL NEEDS RESCUE 🚨</div>' : 
+                                    ''
+                                }
+                                ${hostage.release_date !== 'nan' && hostage.release_date !== '' ? 
+                                    '<div><strong>Released:</strong> ' + hostage.release_date + '</div>' : 
+                                    ''
+                                }
+                                ${hostage.release_circumstances !== 'nan' && hostage.release_circumstances !== 'Currently Held Captive' ? 
+                                    '<div style="margin-top: 8px; font-size: 13px; opacity: 0.9;"><strong>Circumstances:</strong> ' + hostage.release_circumstances + '</div>' : 
+                                    ''
+                                }
+                                <div style="margin-top: 10px; font-size: 12px; opacity: 0.7; text-align: center;">
+                                    Journey from Oct 7 to ${hostage.status.toLowerCase()}
+                                </div>
+                            `);
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this).classed("highlight", false);
+                        d3.select("#tooltip").style("opacity", 0);
+                    });
+                    
+                pathIndex++;
+            });
+        });
+        
+        // Add title annotations
+        g.append("text")
+            .attr("class", "timeline-label")
+            .attr("x", stages[0].x)
+            .attr("y", 20)
+            .attr("font-size", "16px")
+            .attr("font-weight", "bold")
+            .text("October 7, 2023");
+            
+        g.append("text")
+            .attr("class", "timeline-label")
+            .attr("x", stages[1].x)
+            .attr("y", 20)
+            .attr("font-size", "16px")
+            .attr("font-weight", "bold")
+            .text("Current Status (2025)");
+        
+        // Add flowing animation effect
+        const flowAnimation = () => {
+            g.selectAll(".hostage-path")
+                .style("stroke-dasharray", "5,5")
+                .style("stroke-dashoffset", 10)
+                .transition()
+                .duration(3000)
+                .ease(d3.easeLinear)
+                .style("stroke-dashoffset", 0)
+                .on("end", () => {
+                    setTimeout(flowAnimation, 5000);
+                });
+        };
+        
+        // Start the flow animation after a delay
+        setTimeout(flowAnimation, 1000);
+        
+    </script>
+</body>
+</html>

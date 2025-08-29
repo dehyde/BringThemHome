@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>חטופי 7 באוקטובר: נתיבי גורל מתכנסים - 47 עדיין בשבי</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+        }
+        
+        .urgent-banner {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border-radius: 12px;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 20px 25px;
+            border-radius: 10px;
+            min-width: 120px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .held { background: #fef3c7; color: #92400e; }
+        .released-deals { background: #fef3c7; color: #92400e; }
+        .released-rescue { background: #fed7aa; color: #9a3412; }
+        .returned { background: #fecaca; color: #991b1b; }
+        .deceased { background: #fecaca; color: #991b1b; }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.05);
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 4px;
+            border-radius: 2px;
+        }
+        
+        .visualization-area {
+            background: linear-gradient(to bottom, #ffffff, #f8fafc);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .hostage-path {
+            fill: none;
+            stroke-width: 1.5;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+        
+        .hostage-path.urgent {
+            stroke-width: 2.5;
+            opacity: 1.0;
+            filter: drop-shadow(1px 1px 2px rgba(239,68,68,0.4));
+        }
+        
+        .hostage-path:hover {
+            stroke-width: 3.5;
+            opacity: 1.0;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        .convergence-line {
+            stroke-width: 3;
+            opacity: 0.6;
+        }
+        
+        .convergence-line.urgent {
+            stroke-width: 4;
+            opacity: 1.0;
+            filter: drop-shadow(2px 2px 4px rgba(239,68,68,0.5));
+        }
+        
+        .convergence-label {
+            font-size: 13px;
+            font-weight: bold;
+            text-anchor: start;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        
+        .convergence-count {
+            font-size: 11px;
+            text-anchor: start;
+            fill: rgba(255,255,255,0.9);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        
+        .timeline-label {
+            font-size: 12px;
+            font-weight: bold;
+            text-anchor: start;
+            fill: #2c3e50;
+        }
+        
+        .group-background {
+            fill: rgba(255,255,255,0.1);
+            stroke: rgba(255,255,255,0.3);
+            stroke-width: 1;
+            rx: 8;
+            ry: 8;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            max-width: 250px;
+            z-index: 1000;
+            direction: rtl;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">חטופי 7 באוקטובר: נתיבי גורל מתכנסים</div>
+            <div class="subtitle">כל קו מייצג מסע של חטוף אחד מהחטיפה למצבו הנוכחי</div>
+        </div>
+        
+        <div class="urgent-banner">
+            🚨 47 חטופים עדיין בעזה 🚨<br>
+            <div style="font-size: 20px; margin-top: 10px; font-weight: normal;">
+                חיים ומתים - להחזיר אותם הביתה עכשיו
+            </div>
+        </div>
+        
+        <div class="stats" id="stats"></div>
+        <div class="legend" id="legend"></div>
+        
+        <div class="visualization-area">
+            <div id="visualization"></div>
+        </div>
+        
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <script>
+        // Load and process the CSV data
+        d3.csv('hostages-from-kan.csv').then(data => {
+            console.log('Loaded', data.length, 'hostages');
+            
+            // Process the data and categorize into the 4 final groups
+            const processedData = data.map(d => {
+                let finalGroup;
+                const status = d['Current Status'];
+                const deathContext = d['Context of Death'] || '';
+                const circumstances = d['Release/Death Circumstances'] || '';
+                
+                // Determine final group (mutually exclusive)
+                if (status === 'Held in Gaza') {
+                    finalGroup = 'Still Held';
+                } else if (status === 'Deceased - Returned') {
+                    finalGroup = 'Bodies Returned';
+                } else if (status === 'Released') {
+                    if (circumstances.includes('Military') || circumstances.includes('Rescue')) {
+                        finalGroup = 'Military Rescues';
+                    } else {
+                        finalGroup = 'Released in Deals';
+                    }
+                } else if (status === 'Deceased') {
+                    // These should go to one of the death convergence points
+                    if (deathContext.includes('Before/During')) {
+                        finalGroup = 'Killed Immediately';
+                    } else {
+                        finalGroup = 'Killed in Captivity';
+                    }
+                } else {
+                    finalGroup = 'Still Held'; // Default for unknown
+                }
+                
+                return {
+                    ...d,
+                    finalGroup: finalGroup,
+                    hasIntermediateDeath: deathContext.includes('Before/During') || deathContext.includes('Captivity')
+                };
+            });
+            
+            // Count by final groups
+            const groupCounts = {};
+            processedData.forEach(d => {
+                groupCounts[d.finalGroup] = (groupCounts[d.finalGroup] || 0) + 1;
+            });
+            
+            console.log('Group counts:', groupCounts);
+            
+            // Create stats display
+            const statsContainer = d3.select('#stats');
+            const statsData = [
+                { label: 'שוחררו בעסקאות', count: groupCounts['Released in Deals'] || 0, class: 'released-deals' },
+                { label: 'חולצו במבצעים', count: groupCounts['Military Rescues'] || 0, class: 'released-rescue' },
+                { label: 'עדיין בשבי', count: groupCounts['Still Held'] || 0, class: 'held' },
+                { label: 'גופות הוחזרו', count: groupCounts['Bodies Returned'] || 0, class: 'returned' },
+                { label: 'נהרגו מיידית', count: groupCounts['Killed Immediately'] || 0, class: 'deceased' },
+                { label: 'נהרגו בשבי', count: groupCounts['Killed in Captivity'] || 0, class: 'deceased' }
+            ];
+            
+            statsData.forEach(stat => {
+                if (stat.count > 0) {
+                    const item = statsContainer.append('div').attr('class', `stat-item ${stat.class}`);
+                    item.append('div').attr('class', 'stat-number').text(stat.count);
+                    item.append('div').attr('class', 'stat-label').text(stat.label);
+                }
+            });
+            
+            // Visualization setup - increased height for better separation
+            const margin = { top: 60, right: 60, bottom: 60, left: 300 };
+            const width = 1400 - margin.left - margin.right;
+            const height = 1600 - margin.top - margin.bottom;
+            
+            const svg = d3.select('#visualization')
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+                
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+            // Updated color scheme - living = orange/mustard, deceased = semi-transparent red
+            const groupColors = {
+                'Released in Deals': '#f59e0b',      // Mustard/orange - living
+                'Military Rescues': '#d97706',       // Orange - living
+                'Bodies Returned': 'rgba(239, 68, 68, 0.6)',  // Semi-transparent red - deceased
+                'Still Held': '#f59e0b',             // Mustard/orange - living
+                'Killed Immediately': 'rgba(239, 68, 68, 0.6)', // Semi-transparent red - deceased
+                'Killed in Captivity': 'rgba(239, 68, 68, 0.6)' // Semi-transparent red - deceased
+            };
+            
+            // Status categories for gradient logic
+            const livingStatuses = ['Released in Deals', 'Military Rescues', 'Still Held'];
+            const deceasedStatuses = ['Bodies Returned', 'Killed Immediately', 'Killed in Captivity'];
+            
+            // Define convergence points - RTL layout (right to left)
+            const startX = width - 100; // Start from right side
+            const convergencePoints = [
+                // First split - taken alive vs taken dead on Oct 7th
+                { id: 'taken_alive', label: 'נלקחו חיים\n7 באוקטובר', x: width * 0.75, y: 300, color: '#f59e0b', width: 120, height: 100 },
+                { id: 'taken_dead', label: 'נלקחו מתים\n7 באוקטובר', x: width * 0.75, y: 500, color: 'rgba(239, 68, 68, 0.7)', width: 120, height: 100 },
+                
+                // Second convergence - those killed in captivity (from the alive group)
+                { id: 'killed_captivity', label: 'נהרגו בשבי', x: width * 0.5, y: 450, color: 'rgba(239, 68, 68, 0.7)' },
+                
+                // Final 4 parallel groups - spread out more
+                { id: 'released_deals', label: 'שוחררו בעסקאות', x: 100, y: 200, color: '#f59e0b', width: 150, height: 120 },
+                { id: 'military_rescue', label: 'חולצו במבצעים', x: 100, y: 380, color: '#d97706', width: 150, height: 120 },
+                { id: 'bodies_returned', label: 'גופות הוחזרו', x: 100, y: 560, color: 'rgba(239, 68, 68, 0.8)', width: 150, height: 120 },
+                { id: 'still_held', label: '🚨 עדיין בשבי 🚨', x: 100, y: 740, color: '#f59e0b', width: 150, height: 120, urgent: true }
+            ];
+            
+            // Process each hostage's path
+            const hostagesPaths = processedData.map((hostage, i) => {
+                const startY = 60 + (i % 240) * 3; // Increased vertical spread at start
+                const path = [];
+                const deathContext = hostage['Context of Death'] || '';
+                
+                // Everyone starts from the right
+                path.push({ x: startX, y: startY, point: 'start' });
+                
+                // First decision: taken alive or taken dead on Oct 7th
+                const takenAlive = !deathContext.includes('Before/During');
+                
+                if (takenAlive) {
+                    // First go to "taken alive" convergence point
+                    const alivePoint = convergencePoints.find(p => p.id === 'taken_alive');
+                    const aliveGroupHostages = processedData.filter(h => !h['Context of Death']?.includes('Before/During'));
+                    const indexInAlive = aliveGroupHostages.findIndex(h => h['Hebrew Name'] === hostage['Hebrew Name']);
+                    const aliveSpread = alivePoint.height || 100;
+                    const aliveY = alivePoint.y - aliveSpread/2 + (indexInAlive / aliveGroupHostages.length) * aliveSpread;
+                    path.push({ x: alivePoint.x, y: aliveY, point: 'taken_alive' });
+                    
+                    // Then continue based on what happened next
+                    if (hostage.finalGroup === 'Killed in Captivity') {
+                        const deathPoint = convergencePoints.find(p => p.id === 'killed_captivity');
+                        path.push({ x: deathPoint.x, y: deathPoint.y, point: 'killed_captivity' });
+                        
+                        // Then to bodies returned if applicable
+                        if (hostage.finalGroup === 'Bodies Returned') {
+                            const bodyPoint = convergencePoints.find(p => p.id === 'bodies_returned');
+                            const bodyGroupHostages = processedData.filter(h => h.finalGroup === 'Bodies Returned');
+                            const indexInBody = bodyGroupHostages.findIndex(h => h['Hebrew Name'] === hostage['Hebrew Name']);
+                            const bodySpread = bodyPoint.height || 100;
+                            const bodyY = bodyPoint.y - bodySpread/2 + (indexInBody / bodyGroupHostages.length) * bodySpread;
+                            path.push({ x: bodyPoint.x, y: bodyY, point: 'bodies_returned' });
+                        }
+                    } else {
+                        // These go to one of the final living groups
+                        let endPointId;
+                        if (hostage.finalGroup === 'Released in Deals') endPointId = 'released_deals';
+                        else if (hostage.finalGroup === 'Military Rescues') endPointId = 'military_rescue';
+                        else if (hostage.finalGroup === 'Still Held') endPointId = 'still_held';
+                        else if (hostage.finalGroup === 'Bodies Returned') endPointId = 'bodies_returned';
+                        
+                        const endPoint = convergencePoints.find(p => p.id === endPointId);
+                        if (endPoint) {
+                            // Add intermediate death point if killed in captivity first
+                            if (deathContext.includes('Captivity') && hostage.finalGroup === 'Bodies Returned') {
+                                const deathPoint = convergencePoints.find(p => p.id === 'killed_captivity');
+                                path.push({ x: deathPoint.x, y: deathPoint.y, point: 'killed_captivity' });
+                            }
+                            
+                            // Calculate spread within the end group
+                            const groupHostages = processedData.filter(h => h.finalGroup === hostage.finalGroup);
+                            const indexInGroup = groupHostages.findIndex(h => h['Hebrew Name'] === hostage['Hebrew Name']);
+                            const groupSpread = endPoint.height || 100;
+                            const endY = endPoint.y - groupSpread/2 + (indexInGroup / groupHostages.length) * groupSpread;
+                            
+                            path.push({ x: endPoint.x, y: endY, point: endPointId });
+                        }
+                    }
+                } else {
+                    // Taken dead - go directly to "taken dead" convergence point
+                    const deadPoint = convergencePoints.find(p => p.id === 'taken_dead');
+                    const deadGroupHostages = processedData.filter(h => h['Context of Death']?.includes('Before/During'));
+                    const indexInDead = deadGroupHostages.findIndex(h => h['Hebrew Name'] === hostage['Hebrew Name']);
+                    const deadSpread = deadPoint.height || 100;
+                    const deadY = deadPoint.y - deadSpread/2 + (indexInDead / deadGroupHostages.length) * deadSpread;
+                    path.push({ x: deadPoint.x, y: deadY, point: 'taken_dead' });
+                    
+                    // Then to bodies returned if applicable
+                    if (hostage.finalGroup === 'Bodies Returned') {
+                        const bodyPoint = convergencePoints.find(p => p.id === 'bodies_returned');
+                        const bodyGroupHostages = processedData.filter(h => h.finalGroup === 'Bodies Returned');
+                        const indexInBody = bodyGroupHostages.findIndex(h => h['Hebrew Name'] === hostage['Hebrew Name']);
+                        const bodySpread = bodyPoint.height || 100;
+                        const bodyY = bodyPoint.y - bodySpread/2 + (indexInBody / bodyGroupHostages.length) * bodySpread;
+                        path.push({ x: bodyPoint.x, y: bodyY, point: 'bodies_returned' });
+                    }
+                }
+                
+                return {
+                    ...hostage,
+                    path: path,
+                    color: groupColors[hostage.finalGroup] || '#6b7280',
+                    urgent: hostage.finalGroup === 'Still Held'
+                };
+            });
+            
+            // Draw group backgrounds for the final 4 groups
+            const finalGroups = convergencePoints.filter(p => p.width && p.height);
+            finalGroups.forEach(group => {
+                const count = groupCounts[group.label.replace('🚨 ', '').replace(' 🚨', '')] || 0;
+                if (count > 0) {
+                    g.append('rect')
+                        .attr('class', `group-background ${group.urgent ? 'urgent' : ''}`)
+                        .attr('x', group.x - group.width/2)
+                        .attr('y', group.y - group.height/2)
+                        .attr('width', group.width)
+                        .attr('height', group.height)
+                        .attr('fill', group.color)
+                        .attr('fill-opacity', 0.8)
+                        .attr('stroke', d3.color(group.color).darker(0.5));
+                    
+                    g.append('text')
+                        .attr('class', 'convergence-label')
+                        .attr('x', group.x)
+                        .attr('y', group.y - 10)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', group.urgent ? '14px' : '13px')
+                        .text(group.label);
+                        
+                    g.append('text')
+                        .attr('class', 'convergence-count')
+                        .attr('x', group.x)
+                        .attr('y', group.y + 15)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-weight', group.urgent ? 'bold' : 'normal')
+                        .text(`${count} חטופים`);
+                }
+            });
+            
+            // Draw other convergence points
+            const otherPoints = convergencePoints.filter(p => !p.width);
+            otherPoints.forEach(point => {
+                const hostagesTouching = hostagesPaths.filter(h => 
+                    h.path.some(p => p.point === point.id)
+                );
+                
+                if (hostagesTouching.length > 0) {
+                    g.append('circle')
+                        .attr('cx', point.x)
+                        .attr('cy', point.y)
+                        .attr('r', 8)
+                        .attr('fill', point.color);
+                    
+                    g.append('text')
+                        .attr('class', 'timeline-label')
+                        .attr('x', point.x + 15)
+                        .attr('y', point.y - 5)
+                        .attr('fill', point.color)
+                        .selectAll('tspan')
+                        .data(point.label.split('\n'))
+                        .enter()
+                        .append('tspan')
+                        .attr('x', point.x + 15)
+                        .attr('dy', (d, i) => i === 0 ? 0 : 12)
+                        .text(d => d);
+                }
+            });
+            
+            // Create gradients for status transitions (living to deceased)
+            const defs = svg.append('defs');
+            
+            // Create a gradient for each hostage that transitions from living to deceased
+            hostagesPaths.forEach((hostage, index) => {
+                if (hostage.path.length > 1) {
+                    const startsLiving = true; // Everyone starts living
+                    const endsDeceased = deceasedStatuses.includes(hostage.finalGroup);
+                    
+                    if (startsLiving && endsDeceased) {
+                        // Create gradient from orange/mustard to semi-transparent red
+                        const gradient = defs.append('linearGradient')
+                            .attr('id', `gradient-${index}`)
+                            .attr('gradientUnits', 'userSpaceOnUse')
+                            .attr('x1', hostage.path[0].x)
+                            .attr('y1', hostage.path[0].y)
+                            .attr('x2', hostage.path[hostage.path.length - 1].x)
+                            .attr('y2', hostage.path[hostage.path.length - 1].y);
+                        
+                        gradient.append('stop')
+                            .attr('offset', '0%')
+                            .attr('stop-color', '#f59e0b')  // Start with living color (orange/mustard)
+                            .attr('stop-opacity', '1');
+                            
+                        gradient.append('stop')
+                            .attr('offset', '100%')
+                            .attr('stop-color', '#ef4444')  // End with deceased color (red)
+                            .attr('stop-opacity', '0.6');   // Semi-transparent
+                    }
+                }
+            });
+            
+            // Draw Bezier curves for each hostage path
+            hostagesPaths.forEach((hostage, index) => {
+                if (hostage.path.length < 2) return;
+                
+                // Determine if this hostage needs a gradient
+                const startsLiving = true;
+                const endsDeceased = deceasedStatuses.includes(hostage.finalGroup);
+                const useGradient = startsLiving && endsDeceased;
+                const strokeColor = useGradient ? `url(#gradient-${index})` : hostage.color;
+                
+                for (let i = 0; i < hostage.path.length - 1; i++) {
+                    const start = hostage.path[i];
+                    const end = hostage.path[i + 1];
+                    
+                    // Create smooth Bezier curve
+                    const controlX1 = start.x - (start.x - end.x) * 0.3;
+                    const controlY1 = start.y;
+                    const controlX2 = end.x + (start.x - end.x) * 0.3;
+                    const controlY2 = end.y;
+                    
+                    const pathData = `M ${start.x} ${start.y} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${end.x} ${end.y}`;
+                    
+                    g.append('path')
+                        .attr('class', `hostage-path ${hostage.urgent ? 'urgent' : ''}`)
+                        .attr('d', pathData)
+                        .attr('stroke', strokeColor)
+                        .style('cursor', 'pointer')
+                        .on('mouseover', function(event) {
+                            d3.select('#tooltip')
+                                .style('opacity', 1)
+                                .style('left', (event.pageX + 10) + 'px')
+                                .style('top', (event.pageY - 10) + 'px')
+                                .html(`
+                                    <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">${hostage['Hebrew Name']}</div>
+                                    <div style="color: ${hostage.color}; font-weight: bold;">מצב: ${hostage.finalGroup}</div>
+                                    ${hostage.finalGroup === 'Still Held' ? '<div style="color: #f59e0b; font-weight: bold; margin-top: 5px;">🚨 צריך חילוץ דחוף 🚨</div>' : ''}
+                                    ${hostage['Release Date'] && hostage['Release Date'] !== '' ? '<div>שוחרר: ' + hostage['Release Date'] + '</div>' : ''}
+                                    ${hostage['Release/Death Circumstances'] && hostage['Release/Death Circumstances'] !== 'Currently Held Captive' ? '<div style="margin-top: 5px; font-size: 12px; opacity: 0.8;">' + hostage['Release/Death Circumstances'] + '</div>' : ''}
+                                `);
+                        })
+                        .on('mouseout', function() {
+                            d3.select('#tooltip').style('opacity', 0);
+                        });
+                }
+            });
+            
+            // Create legend
+            const legend = d3.select('#legend');
+            Object.entries(groupColors).forEach(([group, color]) => {
+                const count = groupCounts[group] || 0;
+                if (count > 0) {
+                    const item = legend.append('div').attr('class', 'legend-item');
+                    item.append('div').attr('class', 'legend-color').style('background-color', color);
+                    item.append('span').text(`${group} (${count})`);
+                }
+            });
+            
+        }).catch(error => {
+            console.error('Error loading CSV:', error);
+            d3.select('#visualization').html('<p style="text-align: center; color: red; font-size: 18px;">שגיאה בטעינת הנתונים. אנא ודא שהקובץ hostages-from-kan.csv נמצא באותה תיקייה.</p>');
+        });
+    </script>
+</body>
+</html>
