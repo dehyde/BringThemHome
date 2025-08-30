@@ -343,7 +343,8 @@ class LaneManager {
         
         // Resize SVG to accommodate content
         this.timeline.svg
-            .attr('height', dimensions.containerHeight);
+            .attr('height', dimensions.containerHeight)
+            .style('height', dimensions.containerHeight + 'px');
         
         // Update Y scale range
         scales.y.range([0, this.totalHeight]);

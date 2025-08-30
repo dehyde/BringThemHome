@@ -80,7 +80,9 @@ class TimelineCore {
             .attr('class', 'timeline-svg')
             .attr('width', this.dimensions.containerWidth)
             .attr('height', this.dimensions.containerHeight)
-            .attr('dir', 'rtl');
+            .attr('dir', 'rtl')
+            .style('display', 'block')
+            .style('min-height', '100%');
         
         // Create main group for timeline content
         this.timelineGroup = this.svg
