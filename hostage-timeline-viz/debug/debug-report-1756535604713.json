@@ -1,0 +1,151 @@
+{
+  "timestamp": "2025-08-30T06:33:24.711Z",
+  "browserInfo": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/121.0.6167.85 Safari/537.36",
+    "viewportSize": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "DOM loaded, initializing application...",
+      "timestamp": "2025-08-30T06:33:17.601Z"
+    },
+    {
+      "type": "log",
+      "text": "Initializing Hostage Timeline Application...",
+      "timestamp": "2025-08-30T06:33:17.619Z"
+    },
+    {
+      "type": "error",
+      "text": "Application initialization failed: JSHandle@error",
+      "timestamp": "2025-08-30T06:33:17.621Z"
+    },
+    {
+      "type": "error",
+      "text": "Failed to initialize application: JSHandle@error",
+      "timestamp": "2025-08-30T06:33:17.622Z"
+    },
+    {
+      "type": "log",
+      "text": "=== DEBUG: DOM loaded, initializing debug application ===",
+      "timestamp": "2025-08-30T06:33:17.622Z"
+    },
+    {
+      "type": "log",
+      "text": "Initializing Hostage Timeline Application...",
+      "timestamp": "2025-08-30T06:33:17.623Z"
+    },
+    {
+      "type": "error",
+      "text": "Application initialization failed: JSHandle@error",
+      "timestamp": "2025-08-30T06:33:17.623Z"
+    },
+    {
+      "type": "error",
+      "text": "=== DEBUG: Failed to initialize application === JSHandle@error",
+      "timestamp": "2025-08-30T06:33:17.623Z"
+    },
+    {
+      "type": "log",
+      "text": "=== VISUALIZATION ANALYSIS ===",
+      "timestamp": "2025-08-30T06:33:24.638Z"
+    },
+    {
+      "type": "error",
+      "text": "SVG element not found!",
+      "timestamp": "2025-08-30T06:33:24.640Z"
+    }
+  ],
+  "errors": [],
+  "debugData": {
+    "debugData": {
+      "logs": [
+        {
+          "type": "log",
+          "message": "DOM loaded, initializing application...",
+          "timestamp": {}
+        },
+        {
+          "type": "log",
+          "message": "Initializing Hostage Timeline Application...",
+          "timestamp": {}
+        },
+        {
+          "type": "log",
+          "message": "=== DEBUG: DOM loaded, initializing debug application ===",
+          "timestamp": {}
+        },
+        {
+          "type": "log",
+          "message": "Initializing Hostage Timeline Application...",
+          "timestamp": {}
+        },
+        {
+          "type": "log",
+          "message": "=== VISUALIZATION ANALYSIS ===",
+          "timestamp": {}
+        }
+      ],
+      "errors": [
+        {
+          "message": "Application initialization failed: TypeError: Cannot read properties of null (reading 'style')",
+          "timestamp": {}
+        },
+        {
+          "message": "Failed to initialize application: TypeError: Cannot set properties of null (setting 'innerHTML')",
+          "timestamp": {}
+        },
+        {
+          "message": "Application initialization failed: TypeError: Cannot read properties of null (reading 'style')",
+          "timestamp": {}
+        },
+        {
+          "message": "=== DEBUG: Failed to initialize application === TypeError: Cannot set properties of null (setting 'innerHTML')",
+          "timestamp": {}
+        },
+        {
+          "message": "SVG element not found!",
+          "timestamp": {}
+        }
+      ],
+      "dataProcessing": {},
+      "laneInfo": {},
+      "svgElements": {}
+    },
+    "domAnalysis": {
+      "svg": {
+        "exists": false
+      },
+      "hostageLines": {
+        "count": 0,
+        "withPaths": 0,
+        "emptyPaths": 0
+      },
+      "lanes": {
+        "debugBoundaries": 0
+      }
+    },
+    "appState": {
+      "isLoading": false,
+      "hasError": true,
+      "dataCount": 0,
+      "initialized": false
+    },
+    "svgExists": false,
+    "svgDimensions": null,
+    "hostageLineCount": 0,
+    "hostageLineDetails": []
+  },
+  "rootCauseAnalysis": {
+    "primaryIssue": "SVG_CONTAINER_MISSING",
+    "evidence": [
+      "Timeline SVG element not found in DOM"
+    ],
+    "recommendations": [
+      "Check TimelineCore initialization"
+    ]
+  }
+}

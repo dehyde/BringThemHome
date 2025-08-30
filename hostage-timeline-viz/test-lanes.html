@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lane Assignment Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .test-panel { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ddd; }
+        .lane-group { margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; }
+        .lane-group.military { border-color: #3b82f6; }
+        .lane-group.deal { border-color: #22c55e; }
+        .lane-group.kidnapped { border-color: #ef4444; }
+        .hostage-item { margin: 5px 0; padding: 5px; background: #f9f9f9; border-radius: 3px; }
+        .method-military { background: #dbeafe; }
+        .method-deal { background: #dcfce7; }
+        .method-unknown { background: #fef3c7; }
+        pre { background: #f8f8f8; padding: 10px; overflow: auto; max-height: 300px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Lane Assignment Test</h1>
+    
+    <div class="test-panel">
+        <button onclick="testLaneAssignments()">Test Lane Assignments</button>
+        <div id="lane-results"></div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="js/data-processor.js"></script>
+    
+    <script>
+        async function testLaneAssignments() {
+            const resultsDiv = document.getElementById('lane-results');
+            try {
+                resultsDiv.innerHTML = '<div style="color: blue;">Testing lane assignments...</div>';
+                
+                const response = await fetch('data/hostages-from-kan.csv');
+                const csvText = await response.text();
+                const dataProcessor = new DataProcessor();
+                const processedData = dataProcessor.process(csvText);
+                
+                // Group by lane assignments
+                const laneGroups = {};
+                processedData.forEach(hostage => {
+                    const lane = hostage.finalLane;
+                    if (!laneGroups[lane]) laneGroups[lane] = [];
+                    laneGroups[lane].push(hostage);
+                });
+                
+                let html = '<h3>Lane Assignments:</h3>';
+                
+                // Order lanes by priority
+                const laneOrder = [
+                    'released-military-living',
+                    'released-military-deceased', 
+                    'released-deal-living',
+                    'released-deal-deceased',
+                    'kidnapped-living',
+                    'kidnapped-deceased'
+                ];
+                
+                laneOrder.forEach(laneId => {
+                    if (laneGroups[laneId]) {
+                        const hostages = laneGroups[laneId];
+                        const laneClass = laneId.includes('military') ? 'military' : 
+                                        laneId.includes('deal') ? 'deal' : 'kidnapped';
+                        
+                        html += `<div class="lane-group ${laneClass}">`;
+                        html += `<h4>${laneId} (${hostages.length} hostages)</h4>`;
+                        
+                        // Show first few examples with their release circumstances
+                        hostages.slice(0, 5).forEach(hostage => {
+                            const method = dataProcessor.determineReleaseMethod(hostage);
+                            const circumstances = hostage['Release/Death Circumstances'] || 'N/A';
+                            html += `<div class="hostage-item method-${method}">`;
+                            html += `<strong>${hostage['Hebrew Name']}</strong><br>`;
+                            html += `Status: ${hostage['Current Status']}<br>`;
+                            html += `Circumstances: ${circumstances}<br>`;
+                            html += `Detected Method: ${method}`;
+                            html += `</div>`;
+                        });
+                        
+                        if (hostages.length > 5) {
+                            html += `<div style="color: #666; font-style: italic;">... and ${hostages.length - 5} more</div>`;
+                        }
+                        
+                        html += '</div>';
+                    }
+                });
+                
+                // Show summary counts
+                html += '<h3>Summary:</h3>';
+                Object.entries(laneGroups).forEach(([lane, hostages]) => {
+                    html += `<div>${lane}: ${hostages.length}</div>`;
+                });
+                
+                // Test specific cases that might be problematic
+                html += '<h3>Checking Specific Cases:</h3>';
+                
+                // Check deal releases
+                const dealReleases = processedData.filter(h => 
+                    h['Release/Death Circumstances'] && 
+                    h['Release/Death Circumstances'].toLowerCase().includes('deal')
+                );
+                html += `<div>Records with "deal" in circumstances: ${dealReleases.length}</div>`;
+                
+                // Check military operations
+                const militaryReleases = processedData.filter(h => 
+                    h['Release/Death Circumstances'] && 
+                    h['Release/Death Circumstances'].toLowerCase().includes('military operation')
+                );
+                html += `<div>Records with "military operation" in circumstances: ${militaryReleases.length}</div>`;
+                
+                // Check unknown/country-only cases
+                const unknownCases = processedData.filter(h => {
+                    const method = dataProcessor.determineReleaseMethod(h);
+                    return method === 'unknown' && h['Current Status']?.includes('Released');
+                });
+                html += `<div>Released hostages with unknown method: ${unknownCases.length}</div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="color: red;">✗ Error: ${error.message}</div>`;
+                console.error('Lane assignment test failed:', error);
+            }
+        }
+
+        // Auto-run test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testLaneAssignments, 500);
+        });
+    </script>
+</body>
+</html>

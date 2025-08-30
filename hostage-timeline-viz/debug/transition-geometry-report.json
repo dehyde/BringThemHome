@@ -1,0 +1,550 @@
+{
+  "geometryTests": [
+    {
+      "name": "אורי מגידיש",
+      "pathLength": 2,
+      "source": {
+        "lane": "kidnapped-living",
+        "date": "2023-10-07",
+        "x": 576.1,
+        "y": 1060.5,
+        "event": "kidnapped"
+      },
+      "destination": {
+        "lane": "released-military-living",
+        "date": "2023-11-24",
+        "x": 537.9,
+        "y": 8,
+        "event": "released"
+      },
+      "transition": {
+        "deltaX": -38.2,
+        "deltaY": -1052.5,
+        "isRTLCorrect": true,
+        "direction": "up"
+      },
+      "allCoordinates": [
+        {
+          "lane": "kidnapped-living",
+          "date": "2023-10-07",
+          "x": 576.1,
+          "y": 1060.5,
+          "event": "kidnapped"
+        },
+        {
+          "lane": "released-military-living",
+          "date": "2023-11-24",
+          "x": 537.9,
+          "y": 8,
+          "event": "released"
+        }
+      ]
+    },
+    {
+      "name": "אלמוג מאיר ג'אן",
+      "pathLength": 2,
+      "source": {
+        "lane": "kidnapped-living",
+        "date": "2023-10-07",
+        "x": 576.1,
+        "y": 1066,
+        "event": "kidnapped"
+      },
+      "destination": {
+        "lane": "released-military-living",
+        "date": "2024-06-08",
+        "x": 381,
+        "y": 13.5,
+        "event": "released"
+      },
+      "transition": {
+        "deltaX": -195.1,
+        "deltaY": -1052.5,
+        "isRTLCorrect": true,
+        "direction": "up"
+      },
+      "allCoordinates": [
+        {
+          "lane": "kidnapped-living",
+          "date": "2023-10-07",
+          "x": 576.1,
+          "y": 1066,
+          "event": "kidnapped"
+        },
+        {
+          "lane": "released-military-living",
+          "date": "2024-06-08",
+          "x": 381,
+          "y": 13.5,
+          "event": "released"
+        }
+      ]
+    },
+    {
+      "name": "אנדריי קוזלוב",
+      "pathLength": 2,
+      "source": {
+        "lane": "kidnapped-living",
+        "date": "2023-10-07",
+        "x": 576.1,
+        "y": 1071.5,
+        "event": "kidnapped"
+      },
+      "destination": {
+        "lane": "released-military-living",
+        "date": "2024-06-08",
+        "x": 381,
+        "y": 19,
+        "event": "released"
+      },
+      "transition": {
+        "deltaX": -195.1,
+        "deltaY": -1052.5,
+        "isRTLCorrect": true,
+        "direction": "up"
+      },
+      "allCoordinates": [
+        {
+          "lane": "kidnapped-living",
+          "date": "2023-10-07",
+          "x": 576.1,
+          "y": 1071.5,
+          "event": "kidnapped"
+        },
+        {
+          "lane": "released-military-living",
+          "date": "2024-06-08",
+          "x": 381,
+          "y": 19,
+          "event": "released"
+        }
+      ]
+    },
+    {
+      "name": "נועה ארגמני",
+      "pathLength": 2,
+      "source": {
+        "lane": "kidnapped-living",
+        "date": "2023-10-07",
+        "x": 576.1,
+        "y": 1077,
+        "event": "kidnapped"
+      },
+      "destination": {
+        "lane": "released-military-living",
+        "date": "2024-06-08",
+        "x": 381,
+        "y": 24.5,
+        "event": "released"
+      },
+      "transition": {
+        "deltaX": -195.1,
+        "deltaY": -1052.5,
+        "isRTLCorrect": true,
+        "direction": "up"
+      },
+      "allCoordinates": [
+        {
+          "lane": "kidnapped-living",
+          "date": "2023-10-07",
+          "x": 576.1,
+          "y": 1077,
+          "event": "kidnapped"
+        },
+        {
+          "lane": "released-military-living",
+          "date": "2024-06-08",
+          "x": 381,
+          "y": 24.5,
+          "event": "released"
+        }
+      ]
+    },
+    {
+      "name": "שלומי זיו",
+      "pathLength": 2,
+      "source": {
+        "lane": "kidnapped-living",
+        "date": "2023-10-07",
+        "x": 576.1,
+        "y": 1082.5,
+        "event": "kidnapped"
+      },
+      "destination": {
+        "lane": "released-military-living",
+        "date": "2024-06-08",
+        "x": 381,
+        "y": 30,
+        "event": "released"
+      },
+      "transition": {
+        "deltaX": -195.1,
+        "deltaY": -1052.5,
+        "isRTLCorrect": true,
+        "direction": "up"
+      },
+      "allCoordinates": [
+        {
+          "lane": "kidnapped-living",
+          "date": "2023-10-07",
+          "x": 576.1,
+          "y": 1082.5,
+          "event": "kidnapped"
+        },
+        {
+          "lane": "released-military-living",
+          "date": "2024-06-08",
+          "x": 381,
+          "y": 30,
+          "event": "released"
+        }
+      ]
+    }
+  ],
+  "svgPathAnalysis": [
+    {
+      "lineIndex": 0,
+      "pathData": "M576.1070547320425,1060.5L541.8783423033104,1060.5A4,4,0,0,1,537.8783423033104,1056.5L537.8783423033104,12A4,4,0,0,0,533.8783423033104,8L23.8929451481...",
+      "commandCount": 7,
+      "commands": [
+        {
+          "type": "M",
+          "coords": [
+            576.1070547320425,
+            1060.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            541.8783423033104,
+            1060.5
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            4,
+            4,
+            0,
+            0,
+            1,
+            537.8783423033104,
+            1056.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            537.8783423033104,
+            12
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            4,
+            4,
+            0,
+            0,
+            0,
+            533.8783423033104,
+            8
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945148124078,
+            8
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945148124078,
+            8
+          ]
+        }
+      ],
+      "hasBezierCurves": false,
+      "hasQuadraticCurves": false
+    },
+    {
+      "lineIndex": 1,
+      "pathData": "M576.1070547320425,1066L384.98133504372277,1066A4,4,0,0,1,380.98133504372277,1062L380.98133504372277,17.5A4,4,0,0,0,376.98133504372277,13.5L23.8929451...",
+      "commandCount": 7,
+      "commands": [
+        {
+          "type": "M",
+          "coords": [
+            576.1070547320425,
+            1066
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            384.98133504372277,
+            1066
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            4,
+            4,
+            0,
+            0,
+            1,
+            380.98133504372277,
+            1062
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            380.98133504372277,
+            17.5
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            4,
+            4,
+            0,
+            0,
+            0,
+            376.98133504372277,
+            13.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945148124078,
+            13.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945148124078,
+            13.5
+          ]
+        }
+      ],
+      "hasBezierCurves": false,
+      "hasQuadraticCurves": false
+    },
+    {
+      "lineIndex": 2,
+      "pathData": "M576.1070547320425,1071.5L386.18133504372275,1071.5A5.2,5.2,0,0,1,380.98133504372277,1066.3L380.98133504372277,24.2A5.2,5.2,0,0,0,375.7813350437228,19...",
+      "commandCount": 7,
+      "commands": [
+        {
+          "type": "M",
+          "coords": [
+            576.1070547320425,
+            1071.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            386.18133504372275,
+            1071.5
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            5.2,
+            5.2,
+            0,
+            0,
+            1,
+            380.98133504372277,
+            1066.3
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            380.98133504372277,
+            24.2
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            5.2,
+            5.2,
+            0,
+            0,
+            0,
+            375.7813350437228,
+            19
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945148124078,
+            19
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945138906118,
+            19
+          ]
+        }
+      ],
+      "hasBezierCurves": false,
+      "hasQuadraticCurves": false
+    },
+    {
+      "lineIndex": 3,
+      "pathData": "M576.1070547320425,1077L387.38133504372274,1077A6.4,6.4,0,0,1,380.98133504372277,1070.6L380.98133504372277,30.9A6.4,6.4,0,0,0,374.5813350437228,24.5L2...",
+      "commandCount": 7,
+      "commands": [
+        {
+          "type": "M",
+          "coords": [
+            576.1070547320425,
+            1077
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            387.38133504372274,
+            1077
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            6.4,
+            6.4,
+            0,
+            0,
+            1,
+            380.98133504372277,
+            1070.6
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            380.98133504372277,
+            30.9
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            6.4,
+            6.4,
+            0,
+            0,
+            0,
+            374.5813350437228,
+            24.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945138906118,
+            24.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945138906118,
+            24.5
+          ]
+        }
+      ],
+      "hasBezierCurves": false,
+      "hasQuadraticCurves": false
+    },
+    {
+      "lineIndex": 4,
+      "pathData": "M576.1070547320425,1082.5L388.5813350437228,1082.5A7.6,7.6,0,0,1,380.98133504372277,1074.9L380.98133504372277,37.6A7.6,7.6,0,0,0,373.38133504372274,30...",
+      "commandCount": 7,
+      "commands": [
+        {
+          "type": "M",
+          "coords": [
+            576.1070547320425,
+            1082.5
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            388.5813350437228,
+            1082.5
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            7.6,
+            7.6,
+            0,
+            0,
+            1,
+            380.98133504372277,
+            1074.9
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            380.98133504372277,
+            37.6
+          ]
+        },
+        {
+          "type": "A",
+          "coords": [
+            7.6,
+            7.6,
+            0,
+            0,
+            0,
+            373.38133504372274,
+            30
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945138906118,
+            30
+          ]
+        },
+        {
+          "type": "L",
+          "coords": [
+            23.892945138906118,
+            30
+          ]
+        }
+      ],
+      "hasBezierCurves": false,
+      "hasQuadraticCurves": false
+    }
+  ],
+  "transitionEngine": {
+    "baseTurnRadius": 4,
+    "curveType": "cubic-bezier"
+  }
+}

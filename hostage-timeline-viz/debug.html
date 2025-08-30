@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Hostage Timeline</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .debug-panel { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ddd; }
+        .error { color: red; }
+        .success { color: green; }
+        .warning { color: orange; }
+        pre { background: #f8f8f8; padding: 10px; overflow: auto; max-height: 300px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Hostage Timeline Debug Panel</h1>
+    
+    <div class="debug-panel">
+        <h3>Data Loading Test</h3>
+        <button onclick="testDataLoading()">Test Data Loading</button>
+        <div id="data-results"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>Lane Count Verification</h3>
+        <button onclick="testLaneCounts()">Test Lane Counts</button>
+        <div id="lane-results"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>Visualization Test</h3>
+        <button onclick="testVisualization()">Test Full Visualization</button>
+        <div id="viz-results"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>Console Output</h3>
+        <pre id="console-output"></pre>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="js/data-processor.js"></script>
+    <script src="js/timeline-core.js"></script>
+    <script src="js/lane-manager.js"></script>
+    <script src="js/transition-engine.js"></script>
+    <script src="js/interaction.js"></script>
+    
+    <script>
+        // Capture console logs
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function appendToConsole(type, ...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            consoleOutput.textContent += `[${type}] ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            appendToConsole('LOG', ...args);
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            appendToConsole('ERROR', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            appendToConsole('WARN', ...args);
+        };
+
+        async function testDataLoading() {
+            const resultsDiv = document.getElementById('data-results');
+            try {
+                resultsDiv.innerHTML = '<div style="color: blue;">Loading CSV data...</div>';
+                
+                const response = await fetch('data/hostages-from-kan.csv');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const csvText = await response.text();
+                const dataProcessor = new DataProcessor();
+                const processedData = dataProcessor.process(csvText);
+                
+                const stats = dataProcessor.getStats();
+                const errors = dataProcessor.getErrors();
+                
+                let html = `<div class="success">✓ Data loaded successfully</div>`;
+                html += `<div>Total records: ${stats.total}</div>`;
+                html += `<div>Processing errors: ${stats.errors}</div>`;
+                html += `<div>Hostages with transitions: ${stats.withTransitions}</div>`;
+                html += `<h4>By Lane:</h4>`;
+                
+                Object.entries(stats.byLane).forEach(([lane, count]) => {
+                    html += `<div>${lane}: ${count}</div>`;
+                });
+                
+                if (errors.length > 0) {
+                    html += `<h4>Errors:</h4><pre>${errors.slice(0, 10).join('\\n')}</pre>`;
+                }
+                
+                // Count held hostages specifically
+                const heldCount = processedData.filter(h => h.finalLane === 'kidnapped-living').length;
+                html += `<div><strong>Still in captivity (kidnapped-living): ${heldCount}</strong></div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+                // Store data globally for other tests
+                window.testData = processedData;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+                console.error('Data loading test failed:', error);
+            }
+        }
+
+        async function testLaneCounts() {
+            const resultsDiv = document.getElementById('lane-results');
+            
+            if (!window.testData) {
+                resultsDiv.innerHTML = '<div class="warning">Please run data loading test first</div>';
+                return;
+            }
+            
+            try {
+                // Count by status directly from CSV
+                const statusCounts = {};
+                window.testData.forEach(hostage => {
+                    const status = hostage['Current Status'] || 'Unknown';
+                    statusCounts[status] = (statusCounts[status] || 0) + 1;
+                });
+                
+                let html = '<h4>Status Counts from CSV:</h4>';
+                Object.entries(statusCounts).forEach(([status, count]) => {
+                    html += `<div>${status}: ${count}</div>`;
+                });
+                
+                // Count by final lane
+                const laneCounts = {};
+                window.testData.forEach(hostage => {
+                    const lane = hostage.finalLane || 'Unknown';
+                    laneCounts[lane] = (laneCounts[lane] || 0) + 1;
+                });
+                
+                html += '<h4>Final Lane Assignments:</h4>';
+                Object.entries(laneCounts).forEach(([lane, count]) => {
+                    html += `<div>${lane}: ${count}</div>`;
+                });
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+                console.error('Lane count test failed:', error);
+            }
+        }
+
+        async function testVisualization() {
+            const resultsDiv = document.getElementById('viz-results');
+            
+            if (!window.testData) {
+                resultsDiv.innerHTML = '<div class="warning">Please run data loading test first</div>';
+                return;
+            }
+            
+            try {
+                resultsDiv.innerHTML = '<div style="color: blue;">Testing visualization components...</div>';
+                
+                // Create a test container
+                const testContainer = document.createElement('div');
+                testContainer.id = 'test-timeline';
+                testContainer.style.width = '800px';
+                testContainer.style.height = '600px';
+                testContainer.style.border = '1px solid #ccc';
+                testContainer.style.margin = '10px 0';
+                
+                resultsDiv.appendChild(testContainer);
+                
+                // Initialize timeline
+                const timelineCore = new TimelineCore('test-timeline');
+                timelineCore.initialize();
+                timelineCore.updateTimeline(window.testData);
+                
+                // Initialize lane manager
+                const laneManager = new LaneManager(timelineCore);
+                const sortedData = laneManager.processData(window.testData);
+                laneManager.renderLanes();
+                
+                // Test transition engine
+                const transitionEngine = new TransitionEngine(timelineCore, laneManager);
+                const optimizedPaths = transitionEngine.generateOptimizedPaths(sortedData);
+                
+                let html = '<div class="success">✓ Visualization components loaded</div>';
+                html += `<div>Processed hostages: ${sortedData.length}</div>`;
+                html += `<div>Generated paths: ${optimizedPaths.length}</div>`;
+                html += `<div>Timeline dimensions: ${JSON.stringify(timelineCore.getDimensions())}</div>`;
+                
+                const laneStats = laneManager.getStats();
+                html += '<h4>Lane Statistics:</h4>';
+                Object.entries(laneStats.lanes).forEach(([laneId, lane]) => {
+                    html += `<div>${lane.label}: ${lane.count} hostages</div>`;
+                });
+                
+                resultsDiv.innerHTML = html + resultsDiv.innerHTML;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div><pre>${error.stack}</pre>`;
+                console.error('Visualization test failed:', error);
+            }
+        }
+
+        // Auto-run data loading test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testDataLoading, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+/*
+!.gitignore
+!hostage-timeline-viz/
+hostage-timeline-viz/debug/node_modules/
+node_modules/
+*.log
+.DS_Store
