@@ -70,7 +70,7 @@ class HostageTimelineApp {
         try {
             console.log('Loading CSV data...');
             
-            const response = await fetch('data/hostages-from-kan.csv');
+            const response = await fetch('data/hostages-from-kan-fixed.csv');
             if (!response.ok) {
                 throw new Error(`Failed to load CSV file: ${response.status} ${response.statusText}`);
             }
