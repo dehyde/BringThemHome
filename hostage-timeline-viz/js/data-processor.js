@@ -484,12 +484,11 @@ class DataProcessor {
                 event: 'kidnapped'
             });
             
-            // Add intermediate death transition for deceased hostages whose bodies were returned
-            const hasReleaseDate = record.releaseDate && record.releaseDate_valid;
+            // CRITICAL FIX: Add living-to-deceased transitions for hostages who died in captivity
             const isDeceased = record.deathDate && record.deathDate_valid;
             const diedAfterKidnapping = isDeceased && record.deathDate.getTime() > record.kidnappedDate.getTime();
             
-            if (isDeceased && hasReleaseDate && diedAfterKidnapping && initialLane === 'kidnapped-living') {
+            if (initialLane === 'kidnapped-living' && isDeceased && diedAfterKidnapping) {
                 // Add death transition: kidnapped-living → kidnapped-deceased
                 path.push({
                     lane: 'kidnapped-deceased',
@@ -499,11 +498,12 @@ class DataProcessor {
                 });
             }
             
-            // Add final transition event
+            // Add final transition event (release/body return)
             if (record.transitionEvent) {
                 const transitionLane = finalLane;
-                const currentLane = path[path.length - 1].lane;
+                const currentLane = path[path.length - 1].lane; // Use current lane, not initial lane
                 
+                // Only add transition if moving to a different lane
                 if (transitionLane !== currentLane) {
                     path.push({
                         lane: transitionLane,

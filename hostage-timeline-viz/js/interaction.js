@@ -223,11 +223,14 @@ class InteractionManager {
     }
 
     /**
-     * Position tooltip near mouse cursor
+     * Position tooltip near mouse cursor with improved boundary detection
      * @param {Event} event - Mouse event
      */
     positionTooltip(event) {
         if (this.tooltip.empty()) return;
+        
+        // Make tooltip visible first to get accurate measurements
+        this.tooltip.style('display', 'block').style('opacity', 0);
         
         const tooltipNode = this.tooltip.node();
         const rect = tooltipNode.getBoundingClientRect();
@@ -236,21 +239,37 @@ class InteractionManager {
             height: window.innerHeight
         };
         
+        // Account for scroll position
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Calculate initial position
         let x = event.pageX + this.config.tooltipOffset.x;
         let y = event.pageY + this.config.tooltipOffset.y;
         
-        // Adjust if tooltip would go off screen
-        if (x + rect.width > viewport.width) {
-            x = event.pageX - rect.width - this.config.tooltipOffset.x;
+        // Convert to client coordinates for boundary checking
+        const clientX = x - scrollX;
+        const clientY = y - scrollY;
+        
+        // Adjust horizontal position if tooltip would go off screen
+        if (clientX + rect.width > viewport.width - 20) {
+            x = event.pageX - rect.width - Math.abs(this.config.tooltipOffset.x);
         }
         
-        if (y + rect.height > viewport.height) {
-            y = event.pageY - rect.height - this.config.tooltipOffset.y;
+        // Adjust vertical position if tooltip would go off screen
+        if (clientY + rect.height > viewport.height - 20) {
+            y = event.pageY - rect.height - Math.abs(this.config.tooltipOffset.y);
         }
         
-        // Ensure tooltip stays within viewport bounds
-        x = Math.max(10, Math.min(x, viewport.width - rect.width - 10));
-        y = Math.max(10, Math.min(y, viewport.height - rect.height - 10));
+        // Final bounds checking with margins
+        const margin = 10;
+        const minX = scrollX + margin;
+        const maxX = scrollX + viewport.width - rect.width - margin;
+        const minY = scrollY + margin;
+        const maxY = scrollY + viewport.height - rect.height - margin;
+        
+        x = Math.max(minX, Math.min(x, maxX));
+        y = Math.max(minY, Math.min(y, maxY));
         
         this.tooltip
             .style('left', `${x}px`)
@@ -283,20 +302,20 @@ class InteractionManager {
     setHoverState(hostage, event) {
         this.currentHoveredHostage = hostage;
         
-        // Add hovering class to timeline
-        const timelineElement = this.timeline.container.select('.timeline-svg');
-        timelineElement.classed('hovering', true);
+        // Get hostage ID for unique identification
+        const hostageId = hostage['Hebrew Name'] || `hostage_${hostage._lineNumber || 0}`;
         
-        // Highlight current line
+        // Highlight current line by adding unique class
         const currentLine = d3.select(event.currentTarget);
         currentLine
+            .classed('hovered-line', true)
+            .attr('data-hostage-id', hostageId)
             .style('stroke-width', this.config.highlightStrokeWidth)
             .style('opacity', this.config.highlightOpacity);
         
-        // Dim other lines
+        // Dim other lines (those without the hovered-line class)
         const layerGroups = this.timeline.getLayerGroups();
-        layerGroups.lines.selectAll('.hostage-line')
-            .filter(function() { return this !== event.currentTarget; })
+        layerGroups.lines.selectAll('.hostage-line:not(.hovered-line)')
             .transition()
             .duration(100)
             .style('opacity', this.config.dimmedOpacity);
@@ -308,13 +327,11 @@ class InteractionManager {
     resetHoverState() {
         this.currentHoveredHostage = null;
         
-        // Remove hovering class from timeline
-        const timelineElement = this.timeline.container.select('.timeline-svg');
-        timelineElement.classed('hovering', false);
-        
-        // Reset all lines to normal state
+        // Reset all lines to normal state and remove hover classes
         const layerGroups = this.timeline.getLayerGroups();
         layerGroups.lines.selectAll('.hostage-line')
+            .classed('hovered-line', false)
+            .attr('data-hostage-id', null)
             .transition()
             .duration(this.config.fadeTransitionDuration)
             .style('opacity', 1)

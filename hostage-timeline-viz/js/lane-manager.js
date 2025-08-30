@@ -8,6 +8,7 @@ class LaneManager {
         this.timeline = timelineCore;
         this.lanes = new Map();
         this.sortedData = [];
+        this.lanePositionMap = new Map(); // NEW: Track position per hostage per lane
         this.config = {
             lineSpacing: 4, // Base spacing between lines
             lanePadding: 8, // Internal lane padding
@@ -148,13 +149,91 @@ class LaneManager {
      * Assign specific positions within lanes
      */
     assignLanePositions() {
-        // Group by lane
+        // Reset state
+        this.lanes.clear();
+        this.lanePositionMap.clear();
+        
+        // STEP 1: Collect all lanes that will be used and all hostages in each lane
+        const allLanesUsed = new Map(); // laneId -> Set of hostageIds
+        
+        this.sortedData.forEach(hostage => {
+            const hostageId = hostage['Hebrew Name'] || `hostage_${hostage._lineNumber || 0}`;
+            
+            // Add final lane
+            if (!allLanesUsed.has(hostage.laneId)) {
+                allLanesUsed.set(hostage.laneId, new Set());
+            }
+            allLanesUsed.get(hostage.laneId).add(hostageId);
+            
+            // Add all intermediate lanes from path
+            if (hostage.path && hostage.path.length > 0) {
+                hostage.path.forEach(pathPoint => {
+                    if (!allLanesUsed.has(pathPoint.lane)) {
+                        allLanesUsed.set(pathPoint.lane, new Set());
+                    }
+                    allLanesUsed.get(pathPoint.lane).add(hostageId);
+                });
+            }
+        });
+        
+        // STEP 2: Assign consistent positions across all lanes
+        const lanePositionCounters = new Map(); // Track next available position per lane
+        
+        // Sort hostages by event order for consistent positioning
+        const sortedHostages = [...this.sortedData].sort((a, b) => {
+            // First sort by event order (earlier events get lower positions)
+            if (a.eventOrder !== b.eventOrder) {
+                return a.eventOrder - b.eventOrder;
+            }
+            // Then by name for consistency
+            const nameA = a['Hebrew Name'] || '';
+            const nameB = b['Hebrew Name'] || '';
+            return nameA.localeCompare(nameB, 'he');
+        });
+        
+        // Assign positions for each hostage in ALL their lanes
+        sortedHostages.forEach(hostage => {
+            const hostageId = hostage['Hebrew Name'] || `hostage_${hostage._lineNumber || 0}`;
+            
+            // Get all lanes this hostage appears in
+            const hostageLonesSet = new Set();
+            hostageLonesSet.add(hostage.laneId); // final lane
+            
+            if (hostage.path && hostage.path.length > 0) {
+                hostage.path.forEach(pathPoint => {
+                    hostageLonesSet.add(pathPoint.lane);
+                });
+            }
+            
+            // For each lane this hostage appears in, assign the SAME position
+            let assignedPosition = null;
+            
+            Array.from(hostageLonesSet).forEach(laneId => {
+                if (assignedPosition === null) {
+                    // First lane - assign next available position
+                    const currentMax = lanePositionCounters.get(laneId) || -1;
+                    assignedPosition = currentMax + 1;
+                    lanePositionCounters.set(laneId, assignedPosition);
+                } else {
+                    // Subsequent lanes - update counter if needed
+                    const currentMax = lanePositionCounters.get(laneId) || -1;
+                    if (assignedPosition > currentMax) {
+                        lanePositionCounters.set(laneId, assignedPosition);
+                    }
+                }
+                
+                // Store position mapping
+                const positionKey = `${hostageId}-${laneId}`;
+                this.lanePositionMap.set(positionKey, assignedPosition);
+            });
+            
+            // Keep the old field for backward compatibility
+            hostage.lanePosition = assignedPosition;
+        });
+        
+        // STEP 3: Create lane info grouped by final lane
         const laneGroups = d3.group(this.sortedData, d => d.laneId);
         
-        // Reset lanes map
-        this.lanes.clear();
-        
-        // Only create lanes that have hostages (no empty lanes)
         laneGroups.forEach((hostages, laneId) => {
             const laneDef = this.laneDefinitions[laneId];
             
@@ -163,24 +242,26 @@ class LaneManager {
                 return;
             }
             
-            // Assign positions within the lane (0 = top of lane)
-            hostages.forEach((hostage, index) => {
-                hostage.lanePosition = index;
-            });
+            // Calculate actual count in this lane (including transitioning hostages)
+            const hostagesToInThisLane = allLanesUsed.get(laneId) || new Set();
+            const maxPosition = lanePositionCounters.get(laneId) || 0;
+            const actualCount = maxPosition + 1;
             
-            // Store lane info - only for non-empty lanes
             this.lanes.set(laneId, {
                 id: laneId,
                 definition: laneDef,
                 hostages: hostages,
-                count: hostages.length,
-                height: this.calculateSingleLaneHeight(hostages.length),
+                count: actualCount, // Use actual count including transitioning hostages
+                height: this.calculateSingleLaneHeight(actualCount),
                 yStart: 0, // Will be set by calculateLaneHeights
-                yEnd: 0    // Will be set by calculateLaneHeights
+                yEnd: 0,   // Will be set by calculateLaneHeights
+                allHostagesInLane: hostagesToInThisLane
             });
         });
         
-        console.log(`Created ${this.lanes.size} non-empty lanes`);
+        console.log(`Created ${this.lanes.size} non-empty lanes with consistent position tracking`);
+        console.log(`Position map contains ${this.lanePositionMap.size} position entries`);
+        console.log('Lane position counters:', Object.fromEntries(lanePositionCounters));
     }
 
     /**
@@ -290,19 +371,39 @@ class LaneManager {
     }
 
     /**
-     * Get Y coordinate for a specific hostage
+     * Get Y coordinate for a specific hostage in a specific lane
      * @param {Object} hostage - Hostage record
+     * @param {string} specificLane - Optional: specific lane to get position for
      * @returns {number} Y coordinate
      */
-    getHostageY(hostage) {
-        const lane = this.lanes.get(hostage.laneId);
+    getHostageY(hostage, specificLane = null) {
+        const targetLane = specificLane || hostage.laneId;
+        const lane = this.lanes.get(targetLane);
         if (!lane) {
-            console.warn(`Lane not found: ${hostage.laneId}`);
+            console.warn(`Lane not found: ${targetLane}`);
             return 0;
         }
         
+        // Get hostage ID
+        const hostageId = hostage['Hebrew Name'] || `hostage_${hostage._lineNumber || 0}`;
+        
+        // Look up position for this hostage in this specific lane
+        const positionKey = `${hostageId}-${targetLane}`;
+        let position = this.lanePositionMap.get(positionKey);
+        
+        if (position === undefined) {
+            // Fallback: assign next available position in this lane
+            const existingPositions = Array.from(this.lanePositionMap.entries())
+                .filter(([key]) => key.endsWith(`-${targetLane}`))
+                .map(([, pos]) => pos);
+            position = existingPositions.length > 0 ? Math.max(...existingPositions) + 1 : 0;
+            this.lanePositionMap.set(positionKey, position);
+            
+            console.warn(`Assigned fallback position ${position} for ${hostageId} in lane ${targetLane}`);
+        }
+        
         const lineY = lane.yStart + this.config.lanePadding + 
-                     (hostage.lanePosition * (this.config.lineWidth + this.config.lineSpacing));
+                     (position * (this.config.lineWidth + this.config.lineSpacing));
         
         return lineY;
     }
@@ -310,12 +411,30 @@ class LaneManager {
     /**
      * Get Y coordinate for lane transition
      * @param {string} laneId - Target lane ID
-     * @param {number} position - Position within lane
+     * @param {Object} hostage - Hostage record for position lookup
      * @returns {number} Y coordinate
      */
-    getTransitionY(laneId, position) {
+    getTransitionY(laneId, hostage) {
         const lane = this.lanes.get(laneId);
         if (!lane) return 0;
+        
+        // Get hostage ID
+        const hostageId = hostage['Hebrew Name'] || `hostage_${hostage._lineNumber || 0}`;
+        
+        // Look up position for this hostage in this specific lane
+        const positionKey = `${hostageId}-${laneId}`;
+        let position = this.lanePositionMap.get(positionKey);
+        
+        if (position === undefined) {
+            // Fallback: assign next available position in this lane
+            const existingPositions = Array.from(this.lanePositionMap.entries())
+                .filter(([key]) => key.endsWith(`-${laneId}`))
+                .map(([, pos]) => pos);
+            position = existingPositions.length > 0 ? Math.max(...existingPositions) + 1 : 0;
+            this.lanePositionMap.set(positionKey, position);
+            
+            console.warn(`Assigned fallback transition position ${position} for ${hostageId} in lane ${laneId}`);
+        }
         
         return lane.yStart + this.config.lanePadding + 
                (position * (this.config.lineWidth + this.config.lineSpacing));

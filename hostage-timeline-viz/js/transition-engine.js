@@ -66,54 +66,28 @@ class TransitionEngine {
             const nextPoint = pathPoints[i + 1];
 
             // Get Y coordinates for the specific lane at this point
-            // Use hostage's assigned position within the current lane
-            const currentY = this.laneManager.getHostageY({
-                ...hostage,
-                laneId: currentPoint.lane,
-                lanePosition: hostage.lanePosition
-            });
+            // Use NEW API to get position in the specific lane
+            const currentY = this.laneManager.getHostageY(hostage, currentPoint.lane);
 
             const currentX = this.timeline.dateToX(currentPoint.date);
 
             if (!nextPoint) {
-                // Final segment - horizontal line
-                // Only add this for the initial point of hostages without transitions
-                // For hostages with transitions, the path should end at the final transition
-                if (!hostage.hasTransition || i === 0) {
-                    let endX;
-                    if (hostage.hasTransition && hostage.transitionEvent && hostage.transitionEvent.date) {
-                        // For hostages with transitions, end at their final transition date
-                        // But only if the transition date is valid
-                        try {
-                            const transitionDate = hostage.transitionEvent.date;
-                            if (transitionDate instanceof Date && !isNaN(transitionDate.getTime())) {
-                                endX = this.timeline.dateToX(transitionDate);
-                            } else {
-                                // Invalid transition date - extend to timeline end
-                                endX = this.timeline.dateToX(new Date());
-                            }
-                        } catch (error) {
-                            console.warn(`Invalid transition date for ${hostage['Hebrew Name']}: ${hostage.transitionEvent.date}`);
-                            endX = this.timeline.dateToX(new Date());
-                        }
-                    } else {
-                        // For hostages without transitions (still in original state), extend to timeline end
-                        endX = this.timeline.dateToX(new Date());
-                    }
-                    
-                    segments.push({
-                        isTransition: false,
-                        startX: currentX,
-                        startY: currentY,
-                        endX: endX,
-                        endY: currentY,
-                        lane: currentPoint.lane
-                    });
-                }
-                // If this is the final point after a transition, don't add any more segments
+                // Final segment - horizontal line extending to timeline end
+                // ALL hostages should have lines that extend to current date
+                const endX = this.timeline.dateToX(new Date());
+                
+                segments.push({
+                    isTransition: false,
+                    startX: currentX,
+                    startY: currentY,
+                    endX: endX,
+                    endY: currentY,
+                    lane: currentPoint.lane
+                });
+                // This ensures all lines extend to timeline end
             } else {
                 // Calculate transition
-                const nextY = this.laneManager.getTransitionY(nextPoint.lane, hostage.lanePosition || 0);
+                const nextY = this.laneManager.getTransitionY(nextPoint.lane, hostage);
                 const nextX = this.timeline.dateToX(nextPoint.date);
 
                 // Determine turn radius for this transition
@@ -133,11 +107,23 @@ class TransitionEngine {
                     hostage: hostage
                 });
                 
-                // For intermediate transitions, add horizontal segment to next transition or timeline end
+                // Add horizontal segment after transition
                 const isLastTransition = (i === pathPoints.length - 2);
                 
-                if (!isLastTransition) {
-                    // There are more transitions - add horizontal segment to next transition
+                if (isLastTransition) {
+                    // Last transition - extend to timeline end
+                    const endX = this.timeline.dateToX(new Date());
+                    
+                    segments.push({
+                        isTransition: false,
+                        startX: nextX - turnRadius, // Start after turn
+                        startY: nextY,
+                        endX: endX,
+                        endY: nextY,
+                        lane: nextPoint.lane
+                    });
+                } else {
+                    // Intermediate transition - add horizontal segment to next transition
                     const followingPoint = pathPoints[i + 2];
                     const horizontalEndX = followingPoint ? this.timeline.dateToX(followingPoint.date) : nextX;
                     
@@ -150,7 +136,6 @@ class TransitionEngine {
                         lane: nextPoint.lane
                     });
                 }
-                // For last transition, don't add any horizontal segment - path ends at the transition
             }
         }
 
