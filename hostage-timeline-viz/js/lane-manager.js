@@ -10,7 +10,7 @@ class LaneManager {
         this.sortedData = [];
         this.lanePositionMap = new Map(); // NEW: Track position per hostage per lane
         this.config = {
-            lineSpacing: 1, // Base spacing between lines - minimal gap
+            lineSpacing: 2, // Base spacing between lines - increased for better separation
             lanePadding: 12, // Internal lane padding
             sectionSpacing: 25, // Space between major sections
             lineWidth: 1.5,
@@ -407,9 +407,8 @@ class LaneManager {
         const spacing = this.config.lineWidth + this.config.lineSpacing;
         const lineY = lane.yStart + this.config.lanePadding + (position * spacing);
         
-
-        
-        return lineY;
+        // Round to whole pixels to prevent subpixel rendering issues
+        return Math.round(lineY);
     }
 
     /**
@@ -445,7 +444,8 @@ class LaneManager {
         
         console.log(`[Y-COORD] getTransitionY: ${hostageId} in ${laneId}, position=${position}, transitionY=${transitionY}, spacing=${spacing}`);
         
-        return transitionY;
+        // Round to whole pixels to prevent subpixel rendering issues
+        return Math.round(transitionY);
     }
 
     /**

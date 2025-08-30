@@ -135,6 +135,9 @@ body {
     fill: none;
     opacity: 1;
     transition: opacity 0.2s ease;
+    shape-rendering: geometricPrecision;
+    /* Prevent anti-aliasing inconsistencies */
+    vector-effect: non-scaling-stroke;
 }
 
 .hostage-line.kidnapped-living {
