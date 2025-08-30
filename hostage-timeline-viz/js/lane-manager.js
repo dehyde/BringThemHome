@@ -255,6 +255,7 @@ class LaneManager {
         console.log(`[LANES] Created ${this.lanes.size} non-empty lanes with consistent position tracking`);
         console.log(`[LANES] Position map contains ${this.lanePositionMap.size} position entries`);
         console.log('[LANES] Lane position counters:', Object.fromEntries(lanePositionCounters));
+        console.log('[LANES] Position map keys (first 10):', Array.from(this.lanePositionMap.keys()).slice(0, 10));
     }
 
     /**
@@ -383,6 +384,8 @@ class LaneManager {
         // Look up position for this hostage in this specific lane
         const positionKey = `${hostageId}-${targetLane}`;
         let position = this.lanePositionMap.get(positionKey);
+        
+        console.log(`[DEBUG] Looking up position for key: "${positionKey}", found: ${position}`);
         
         if (position === undefined) {
             // Fallback: assign next available position in this lane
