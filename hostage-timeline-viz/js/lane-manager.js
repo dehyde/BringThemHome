@@ -134,23 +134,36 @@ class LaneManager {
             
             // Special sorting for kidnapped-living lane
             if (a.laneId === 'kidnapped-living' && b.laneId === 'kidnapped-living') {
-                // Check if hostages died in captivity
-                const aDiedInCaptivity = a.deathDate_valid && a.deathDate;
-                const bDiedInCaptivity = b.deathDate_valid && b.deathDate;
+                // Check if hostages died in captivity but had bodies returned (have both death and release dates)
+                const aDiedButReturned = a.deathDate_valid && a.releaseDate_valid;
+                const bDiedButReturned = b.deathDate_valid && b.releaseDate_valid;
                 
-                if (aDiedInCaptivity && !bDiedInCaptivity) {
-                    return 1; // a (died) goes after b (alive) - a goes to bottom
+                // Check if hostages are still alive (no death date) and not released
+                const aStillAlive = !a.deathDate_valid && !a.releaseDate_valid;
+                const bStillAlive = !b.deathDate_valid && !b.releaseDate_valid;
+                
+                // Still alive hostages go to top
+                if (aStillAlive && !bStillAlive) {
+                    return -1; // a (alive) goes before b (deceased/returned)
                 }
-                if (!aDiedInCaptivity && bDiedInCaptivity) {
-                    return -1; // b (died) goes after a (alive) - b goes to bottom
+                if (!aStillAlive && bStillAlive) {
+                    return 1; // b (alive) goes before a (deceased/returned)
                 }
                 
-                if (aDiedInCaptivity && bDiedInCaptivity) {
-                    // Both died - sort by death date (latest death first, earliest death last)
-                    return b.deathDate.getTime() - a.deathDate.getTime();
+                // Among those who died and were returned, sort by release date (latest first)
+                if (aDiedButReturned && bDiedButReturned) {
+                    return b.releaseDate.getTime() - a.releaseDate.getTime(); // Latest release first
                 }
                 
-                // Both alive - continue with normal sorting
+                // If one died and returned, other died but not returned
+                if (aDiedButReturned && !bDiedButReturned) {
+                    return -1; // returned bodies appear before those still held
+                }
+                if (!aDiedButReturned && bDiedButReturned) {
+                    return 1; // returned bodies appear before those still held
+                }
+                
+                // Both still alive or both in same category - continue with normal sorting
             }
             
             // Within each lane, sort by event order
