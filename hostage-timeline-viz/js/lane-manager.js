@@ -176,7 +176,7 @@ class LaneManager {
             }
         });
         
-        // STEP 2: Assign consistent positions across all lanes
+        // STEP 2: Assign positions per lane (each hostage gets next available position in each lane)
         const lanePositionCounters = new Map(); // Track next available position per lane
         
         // Sort hostages by event order for consistent positioning
@@ -196,39 +196,32 @@ class LaneManager {
             const hostageId = hostage['Hebrew Name'] || `hostage_${hostage._lineNumber || 0}`;
             
             // Get all lanes this hostage appears in
-            const hostageLonesSet = new Set();
-            hostageLonesSet.add(hostage.laneId); // final lane
+            const hostagelanesSet = new Set();
+            hostagelanesSet.add(hostage.laneId); // final lane
             
             if (hostage.path && hostage.path.length > 0) {
                 hostage.path.forEach(pathPoint => {
-                    hostageLonesSet.add(pathPoint.lane);
+                    hostagelanesSet.add(pathPoint.lane);
                 });
             }
             
-            // For each lane this hostage appears in, assign the SAME position
-            let assignedPosition = null;
-            
-            Array.from(hostageLonesSet).forEach(laneId => {
-                if (assignedPosition === null) {
-                    // First lane - assign next available position
-                    const currentMax = lanePositionCounters.get(laneId) || -1;
-                    assignedPosition = currentMax + 1;
-                    lanePositionCounters.set(laneId, assignedPosition);
-                } else {
-                    // Subsequent lanes - update counter if needed
-                    const currentMax = lanePositionCounters.get(laneId) || -1;
-                    if (assignedPosition > currentMax) {
-                        lanePositionCounters.set(laneId, assignedPosition);
-                    }
-                }
+            // For each lane this hostage appears in, assign next available position in that lane
+            Array.from(hostagelanesSet).forEach(laneId => {
+                // Get next available position for this lane
+                const currentMax = lanePositionCounters.get(laneId) || -1;
+                const assignedPosition = currentMax + 1;
+                lanePositionCounters.set(laneId, assignedPosition);
                 
                 // Store position mapping
                 const positionKey = `${hostageId}-${laneId}`;
                 this.lanePositionMap.set(positionKey, assignedPosition);
+                
+                console.log(`Assigned position ${assignedPosition} to ${hostageId} in lane ${laneId}`);
             });
             
-            // Keep the old field for backward compatibility
-            hostage.lanePosition = assignedPosition;
+            // Keep the old field for backward compatibility (use final lane position)
+            const finalLaneKey = `${hostageId}-${hostage.laneId}`;
+            hostage.lanePosition = this.lanePositionMap.get(finalLaneKey) || 0;
         });
         
         // STEP 3: Create lane info grouped by final lane
