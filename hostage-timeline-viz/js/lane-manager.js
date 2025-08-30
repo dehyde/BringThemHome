@@ -341,7 +341,7 @@ class LaneManager {
         dimensions.height = neededHeight;
         dimensions.containerHeight = neededHeight + this.timeline.getConfig().margins.top + this.timeline.getConfig().margins.bottom;
         
-        // Resize SVG
+        // Resize SVG to accommodate content
         this.timeline.svg
             .attr('height', dimensions.containerHeight);
         
