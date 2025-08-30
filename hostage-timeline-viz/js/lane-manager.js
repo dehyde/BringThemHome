@@ -402,8 +402,11 @@ class LaneManager {
             console.warn(`Assigned fallback position ${position} for ${hostageId} in lane ${targetLane}`);
         }
         
-        const lineY = lane.yStart + this.config.lanePadding + 
-                     (position * (this.config.lineWidth + this.config.lineSpacing));
+        const spacing = this.config.lineWidth + this.config.lineSpacing;
+        const lineY = lane.yStart + this.config.lanePadding + (position * spacing);
+        
+        // Debug logging
+        console.log(`getHostageY: ${hostageId} in ${targetLane}, position=${position}, lineY=${lineY}, spacing=${spacing}`);
         
         return lineY;
     }
@@ -436,8 +439,12 @@ class LaneManager {
             console.warn(`Assigned fallback transition position ${position} for ${hostageId} in lane ${laneId}`);
         }
         
-        return lane.yStart + this.config.lanePadding + 
-               (position * (this.config.lineWidth + this.config.lineSpacing));
+        const spacing = this.config.lineWidth + this.config.lineSpacing;
+        const transitionY = lane.yStart + this.config.lanePadding + (position * spacing);
+        
+        console.log(`getTransitionY: ${hostageId} in ${laneId}, position=${position}, transitionY=${transitionY}, spacing=${spacing}`);
+        
+        return transitionY;
     }
 
     /**
