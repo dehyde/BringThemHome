@@ -216,7 +216,7 @@ class LaneManager {
                 const positionKey = `${hostageId}-${laneId}`;
                 this.lanePositionMap.set(positionKey, assignedPosition);
                 
-                console.log(`Assigned position ${assignedPosition} to ${hostageId} in lane ${laneId}`);
+                console.log(`[POSITION] Assigned position ${assignedPosition} to ${hostageId} in lane ${laneId}`);
             });
             
             // Keep the old field for backward compatibility (use final lane position)
@@ -252,9 +252,9 @@ class LaneManager {
             });
         });
         
-        console.log(`Created ${this.lanes.size} non-empty lanes with consistent position tracking`);
-        console.log(`Position map contains ${this.lanePositionMap.size} position entries`);
-        console.log('Lane position counters:', Object.fromEntries(lanePositionCounters));
+        console.log(`[LANES] Created ${this.lanes.size} non-empty lanes with consistent position tracking`);
+        console.log(`[LANES] Position map contains ${this.lanePositionMap.size} position entries`);
+        console.log('[LANES] Lane position counters:', Object.fromEntries(lanePositionCounters));
     }
 
     /**
@@ -399,7 +399,7 @@ class LaneManager {
         const lineY = lane.yStart + this.config.lanePadding + (position * spacing);
         
         // Debug logging
-        console.log(`getHostageY: ${hostageId} in ${targetLane}, position=${position}, lineY=${lineY}, spacing=${spacing}`);
+        console.log(`[Y-COORD] getHostageY: ${hostageId} in ${targetLane}, position=${position}, lineY=${lineY}, spacing=${spacing}`);
         
         return lineY;
     }
@@ -435,7 +435,7 @@ class LaneManager {
         const spacing = this.config.lineWidth + this.config.lineSpacing;
         const transitionY = lane.yStart + this.config.lanePadding + (position * spacing);
         
-        console.log(`getTransitionY: ${hostageId} in ${laneId}, position=${position}, transitionY=${transitionY}, spacing=${spacing}`);
+        console.log(`[Y-COORD] getTransitionY: ${hostageId} in ${laneId}, position=${position}, transitionY=${transitionY}, spacing=${spacing}`);
         
         return transitionY;
     }
