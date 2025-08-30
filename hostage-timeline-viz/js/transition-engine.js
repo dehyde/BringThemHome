@@ -84,6 +84,8 @@ class TransitionEngine {
                     endY: currentY,
                     lane: currentPoint.lane
                 });
+                
+                console.log(`Final segment for ${hostage['Hebrew Name']}: startY=${currentY}, endY=${currentY}, lane=${currentPoint.lane}`);
                 // This ensures all lines extend to timeline end
             } else {
                 // Calculate transition
@@ -122,6 +124,8 @@ class TransitionEngine {
                         endY: nextY,
                         lane: nextPoint.lane
                     });
+                    
+                    console.log(`Post-transition segment for ${hostage['Hebrew Name']}: startY=${nextY}, endY=${nextY}, lane=${nextPoint.lane}`);
                 } else {
                     // Intermediate transition - add horizontal segment to next transition
                     const followingPoint = pathPoints[i + 2];
@@ -135,6 +139,8 @@ class TransitionEngine {
                         endY: nextY,
                         lane: nextPoint.lane
                     });
+                    
+                    console.log(`Intermediate segment for ${hostage['Hebrew Name']}: startY=${nextY}, endY=${nextY}, lane=${nextPoint.lane}`);
                 }
             }
         }
