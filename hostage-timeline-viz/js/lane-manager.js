@@ -10,9 +10,9 @@ class LaneManager {
         this.sortedData = [];
         this.lanePositionMap = new Map(); // NEW: Track position per hostage per lane
         this.config = {
-            lineSpacing: 20, // Base spacing between lines - dramatically increased for testing
-            lanePadding: 20, // Internal lane padding - dramatically increased  
-            sectionSpacing: 50, // Space between major sections - dramatically increased
+            lineSpacing: 6, // Base spacing between lines - reasonable spacing for visibility
+            lanePadding: 12, // Internal lane padding
+            sectionSpacing: 25, // Space between major sections
             lineWidth: 1.5,
             turnRadius: 4 // For transitions
         };
@@ -208,15 +208,17 @@ class LaneManager {
             // For each lane this hostage appears in, assign next available position in that lane
             Array.from(hostagelanesSet).forEach(laneId => {
                 // Get next available position for this lane
-                const currentMax = lanePositionCounters.get(laneId) || -1;
-                const assignedPosition = currentMax + 1;
-                lanePositionCounters.set(laneId, assignedPosition);
+                const currentCounter = lanePositionCounters.get(laneId) || 0;
+                const assignedPosition = currentCounter;
+                
+                // Increment counter for next hostage
+                lanePositionCounters.set(laneId, currentCounter + 1);
                 
                 // Store position mapping
                 const positionKey = `${hostageId}-${laneId}`;
                 this.lanePositionMap.set(positionKey, assignedPosition);
                 
-                console.log(`[POSITION] Assigned position ${assignedPosition} to ${hostageId} in lane ${laneId}`);
+                console.log(`[POSITION] Assigned position ${assignedPosition} to ${hostageId} in lane ${laneId}, next position will be ${currentCounter + 1}`);
             });
             
             // Keep the old field for backward compatibility (use final lane position)
