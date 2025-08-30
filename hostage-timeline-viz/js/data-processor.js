@@ -110,6 +110,23 @@ class DataProcessor {
             validatedRecord.deathDateRange = this.parseRangeDate(record['Date of Death']);
         }
         
+        // CRITICAL FIX: Calculate missing release dates from Hebrew "שוחרר אחרי XX יום בשבי" text
+        if (!validatedRecord.releaseDate_valid || !validatedRecord.releaseDate) {
+            const hebrewSummary = record['Kidnapping Summary (Hebrew)'] || '';
+            const daysInCaptivityMatch = hebrewSummary.match(/שוחרר אחרי (\d+) יום[ים]?/);
+            
+            if (daysInCaptivityMatch && validatedRecord.kidnappedDate) {
+                const daysInCaptivity = parseInt(daysInCaptivityMatch[1]);
+                const calculatedReleaseDate = new Date(validatedRecord.kidnappedDate);
+                calculatedReleaseDate.setDate(calculatedReleaseDate.getDate() + daysInCaptivity);
+                
+                console.warn(`Calculated release date for ${record['Hebrew Name']}: ${daysInCaptivity} days after kidnapping = ${calculatedReleaseDate.toISOString().split('T')[0]}`);
+                
+                validatedRecord.releaseDate = calculatedReleaseDate;
+                validatedRecord.releaseDate_valid = true;
+            }
+        }
+        
         return validatedRecord;
     }
 
@@ -136,6 +153,19 @@ class DataProcessor {
         if (dateStr.toLowerCase().includes('killed in captivity by captors')) {
             // Estimate mid-captivity death 
             return new Date('2024-01-15');
+        }
+        
+        // CRITICAL FIX: Handle incorrect 2025 dates that should be 2024
+        // The CSV has wrong year calculations for body returns
+        if (dateStr.includes('2025-') && 
+            (dateStr.startsWith('2025-01') || dateStr.startsWith('2025-02') || 
+             dateStr.startsWith('2025-03') || dateStr.startsWith('2025-04') || 
+             dateStr.startsWith('2025-05') || dateStr.startsWith('2025-06') || 
+             dateStr.startsWith('2025-07') || dateStr.startsWith('2025-08'))) {
+            // These should be 2024 dates, not 2025
+            const correctedDate = dateStr.replace('2025-', '2024-');
+            console.warn(`Correcting wrong 2025 date to 2024: ${dateStr} -> ${correctedDate}`);
+            dateStr = correctedDate;
         }
         
         // Handle different date formats
@@ -225,29 +255,59 @@ class DataProcessor {
                     date: record.releaseDate,
                     timestamp: record.releaseDate.getTime()
                 });
-            } else if (record['Current Status']?.includes('Released') || 
-                      record['Current Status']?.includes('Deceased - Returned')) {
+            } else if ((record['Current Status']?.includes('Released') || 
+                       record['Current Status']?.includes('Deceased - Returned')) &&
+                      (!record.releaseDate || !record.releaseDate_valid)) {
                 // Create release event for hostages with release status but invalid dates
-                // Use death date if available, otherwise reasonable estimated date
+                // CRITICAL: For deceased hostages whose bodies were returned, the transition should
+                // happen on the BODY RETURN date, not the death date!
                 let estimatedDate;
                 
-                if (record.deathDate && record.deathDate_valid) {
-                    // For deceased who were returned, use death date as the logical transition point
-                    estimatedDate = record.deathDate;
-                } else {
-                    // Try to parse context from release circumstances or death context
+                const isDeceasedReturned = record['Current Status']?.includes('Deceased - Returned');
+                
+                if (isDeceasedReturned) {
+                    // For deceased whose bodies were returned, we need to estimate the body return date
+                    // This should NOT be the death date - that's when they died, not when body was returned
                     const releaseCircumstances = record['Release/Death Circumstances'] || '';
-                    const deathContext = record['Context of Death'] || '';
                     
-                    if (deathContext.toLowerCase().includes('killed during oct 7') ||
-                        releaseCircumstances.toLowerCase().includes('oct 7')) {
-                        estimatedDate = new Date('2023-10-07');
-                    } else if (deathContext.toLowerCase().includes('killed in captivity')) {
-                        estimatedDate = new Date('2024-01-15'); // Mid-captivity estimate
+                    // Try to extract date information from circumstances
+                    if (releaseCircumstances.includes('2024') || releaseCircumstances.includes('2025')) {
+                        // If circumstances contain a year, try to parse it
+                        const yearMatch = releaseCircumstances.match(/20\d{2}/);
+                        if (yearMatch) {
+                            // Use January of that year as estimate (could be improved with more specific parsing)
+                            estimatedDate = new Date(`${yearMatch[0]}-01-15`);
+                        } else {
+                            // Fallback: Recent body returns have been happening in 2024-2025
+                            estimatedDate = new Date('2024-06-01'); // Mid-2024 estimate
+                        }
                     } else {
-                        // Last resort: use current date but this should be rare now
-                        estimatedDate = new Date();
-                        console.warn(`Using current date for ${record['Hebrew Name']} - no better date available`);
+                        // No year info - estimate based on common body return timeframes
+                        // Most bodies were returned in ceasefire deals or recent negotiations
+                        estimatedDate = new Date('2024-06-01'); // Mid-2024 estimate
+                    }
+                    
+                    console.warn(`Estimated body return date for ${record['Hebrew Name']}: ${estimatedDate.toISOString().split('T')[0]} (original release info: "${record['Release Date']}")`);
+                } else {
+                    // For living released hostages, use different logic
+                    if (record.deathDate && record.deathDate_valid) {
+                        // This shouldn't happen for living released hostages, but handle it
+                        estimatedDate = record.deathDate;
+                    } else {
+                        // Try to parse context from release circumstances
+                        const releaseCircumstances = record['Release/Death Circumstances'] || '';
+                        const deathContext = record['Context of Death'] || '';
+                        
+                        if (deathContext.toLowerCase().includes('killed during oct 7') ||
+                            releaseCircumstances.toLowerCase().includes('oct 7')) {
+                            estimatedDate = new Date('2023-10-07');
+                        } else if (releaseCircumstances.toLowerCase().includes('killed in captivity')) {
+                            estimatedDate = new Date('2024-01-15'); // Mid-captivity estimate
+                        } else {
+                            // Last resort: use current date but this should be rare now
+                            estimatedDate = new Date();
+                            console.warn(`Using current date for ${record['Hebrew Name']} - no better date available`);
+                        }
                     }
                 }
                 

@@ -81,9 +81,21 @@ class TransitionEngine {
                 // For hostages with transitions, the path should end at the final transition
                 if (!hostage.hasTransition || i === 0) {
                     let endX;
-                    if (hostage.hasTransition && hostage.transitionEvent) {
+                    if (hostage.hasTransition && hostage.transitionEvent && hostage.transitionEvent.date) {
                         // For hostages with transitions, end at their final transition date
-                        endX = this.timeline.dateToX(hostage.transitionEvent.date);
+                        // But only if the transition date is valid
+                        try {
+                            const transitionDate = hostage.transitionEvent.date;
+                            if (transitionDate instanceof Date && !isNaN(transitionDate.getTime())) {
+                                endX = this.timeline.dateToX(transitionDate);
+                            } else {
+                                // Invalid transition date - extend to timeline end
+                                endX = this.timeline.dateToX(new Date());
+                            }
+                        } catch (error) {
+                            console.warn(`Invalid transition date for ${hostage['Hebrew Name']}: ${hostage.transitionEvent.date}`);
+                            endX = this.timeline.dateToX(new Date());
+                        }
                     } else {
                         // For hostages without transitions (still in original state), extend to timeline end
                         endX = this.timeline.dateToX(new Date());
@@ -155,25 +167,53 @@ class TransitionEngine {
     }
 
     /**
-     * Add transition segment with simple rectangular corner using straight lines
-     * Creates a clean L-shaped transition without complex arcs
-     * @param {d3.path} path - D3 path object
+     * Add transition segment with rectangular corner turns using SVG arcs
+     * Creates smooth rounded corners for lane transitions
+     * @param {d3.path} path - D3 path object  
      * @param {Object} segment - Transition segment data
      */
     addTransitionSegment(path, segment) {
-        const { startX, startY, endX, endY, transitionDate } = segment;
+        const { startX, startY, endX, endY, transitionDate, turnRadius } = segment;
         
         // Get the actual transition date X coordinate
         const transitionX = this.timeline.dateToX(transitionDate);
         
-        // Simple L-shaped transition: horizontal then vertical
-        // 1. Go horizontally to the transition X
-        path.lineTo(transitionX, startY);
+        // Determine movement direction
+        const isMovingUp = endY < startY;
         
-        // 2. Go vertically to the end Y
-        path.lineTo(transitionX, endY);
+        // Calculate the 4 corner points for rectangular turns (RTL-aware)
+        // Based on the working fixes from conversation summary
         
-        // That's it - clean, simple, no loops
+        // Point 1: X + radius, original Y (rightmost - earlier in RTL) 
+        const point1X = transitionX + turnRadius;
+        const point1Y = startY;
+        
+        // Point 2: X, original Y ± radius (FIXED: subtract for upward movement)
+        const point2X = transitionX;
+        const point2Y = isMovingUp ? startY - turnRadius : startY + turnRadius;
+        
+        // Point 3: X, new Y ± radius
+        const point3X = transitionX;
+        const point3Y = isMovingUp ? endY + turnRadius : endY - turnRadius;
+        
+        // Point 4: X - radius, new Y (leftmost - later in RTL)
+        const point4X = transitionX - turnRadius; 
+        const point4Y = endY;
+        
+        // Create the rectangular corner path using SVG arcs
+        // 1. Line to corner start
+        path.lineTo(point1X, point1Y);
+        
+        // 2. First arc: horizontal to vertical turn
+        path.arcTo(transitionX, startY, point2X, point2Y, turnRadius);
+        
+        // 3. Vertical line segment
+        path.lineTo(point3X, point3Y);
+        
+        // 4. Second arc: vertical to horizontal turn  
+        path.arcTo(transitionX, endY, point4X, point4Y, turnRadius);
+        
+        // Path now ends at point4, ready for next segment
     }
 
     /**
