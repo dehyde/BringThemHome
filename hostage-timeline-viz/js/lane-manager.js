@@ -132,6 +132,27 @@ class LaneManager {
                 return a.laneDef.priority - b.laneDef.priority;
             }
             
+            // Special sorting for kidnapped-living lane
+            if (a.laneId === 'kidnapped-living' && b.laneId === 'kidnapped-living') {
+                // Check if hostages died in captivity
+                const aDiedInCaptivity = a.deathDate_valid && a.deathDate;
+                const bDiedInCaptivity = b.deathDate_valid && b.deathDate;
+                
+                if (aDiedInCaptivity && !bDiedInCaptivity) {
+                    return 1; // a (died) goes after b (alive) - a goes to bottom
+                }
+                if (!aDiedInCaptivity && bDiedInCaptivity) {
+                    return -1; // b (died) goes after a (alive) - b goes to bottom
+                }
+                
+                if (aDiedInCaptivity && bDiedInCaptivity) {
+                    // Both died - sort by death date (latest death first, earliest death last)
+                    return b.deathDate.getTime() - a.deathDate.getTime();
+                }
+                
+                // Both alive - continue with normal sorting
+            }
+            
             // Within each lane, sort by event order
             // Earlier transitions appear higher (lower eventOrder value = higher position)
             if (a.eventOrder !== b.eventOrder) {
