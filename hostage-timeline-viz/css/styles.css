@@ -75,11 +75,9 @@ body {
 
 /* SVG Timeline Styles */
 .timeline-svg {
-    width: 100%;
-    height: auto;
-    min-height: 100%;
     direction: rtl;
     display: block;
+    /* Allow SVG to expand beyond container for scrolling */
 }
 
 /* Lane Labels */

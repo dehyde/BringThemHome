@@ -342,8 +342,11 @@ class LaneManager {
         dimensions.containerHeight = neededHeight + this.timeline.getConfig().margins.top + this.timeline.getConfig().margins.bottom;
         
         // Resize SVG to accommodate content
+        const svgWidth = Math.max(dimensions.containerWidth, this.timeline.getConfig().minWidth);
         this.timeline.svg
+            .attr('width', svgWidth)
             .attr('height', dimensions.containerHeight)
+            .style('width', svgWidth + 'px')
             .style('height', dimensions.containerHeight + 'px');
         
         // Update Y scale range

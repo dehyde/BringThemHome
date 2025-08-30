@@ -15,7 +15,7 @@ class TimelineCore {
         // Configuration
         this.config = {
             margins: { top: 60, right: 200, bottom: 80, left: 60 },
-            minWidth: 800,
+            minWidth: 1400, // Increased minimum width for better timeline
             minHeight: 600,
             timelineStart: new Date('2023-10-07'),
             timelineEnd: new Date(), // Current date
@@ -61,6 +61,9 @@ class TimelineCore {
         const containerNode = this.container.node();
         const rect = containerNode.getBoundingClientRect();
         
+        console.log('Container rect:', rect);
+        console.log('Container node:', containerNode);
+        
         this.dimensions = {
             containerWidth: Math.max(rect.width, this.config.minWidth),
             containerHeight: Math.max(rect.height, this.config.minHeight),
@@ -75,13 +78,17 @@ class TimelineCore {
      * Create the main SVG container with proper RTL setup
      */
     createSVGContainer() {
+        // Use minimum width to ensure horizontal scrolling works
+        const svgWidth = Math.max(this.dimensions.containerWidth, this.config.minWidth);
+        
         this.svg = this.container
             .append('svg')
             .attr('class', 'timeline-svg')
-            .attr('width', this.dimensions.containerWidth)
+            .attr('width', svgWidth)
             .attr('height', this.dimensions.containerHeight)
             .attr('dir', 'rtl')
             .style('display', 'block')
+            .style('min-width', svgWidth + 'px')
             .style('min-height', '100%');
         
         // Create main group for timeline content
