@@ -132,40 +132,6 @@ class LaneManager {
                 return a.laneDef.priority - b.laneDef.priority;
             }
             
-            // Special sorting for kidnapped-living lane
-            if (a.laneId === 'kidnapped-living' && b.laneId === 'kidnapped-living') {
-                // Check if hostages died in captivity but had bodies returned (have both death and release dates)
-                const aDiedButReturned = a.deathDate_valid && a.releaseDate_valid;
-                const bDiedButReturned = b.deathDate_valid && b.releaseDate_valid;
-                
-                // Check if hostages are still alive (no death date) and not released
-                const aStillAlive = !a.deathDate_valid && !a.releaseDate_valid;
-                const bStillAlive = !b.deathDate_valid && !b.releaseDate_valid;
-                
-                // Still alive hostages go to top
-                if (aStillAlive && !bStillAlive) {
-                    return -1; // a (alive) goes before b (deceased/returned)
-                }
-                if (!aStillAlive && bStillAlive) {
-                    return 1; // b (alive) goes before a (deceased/returned)
-                }
-                
-                // Among those who died and were returned, sort by release date (latest first)
-                if (aDiedButReturned && bDiedButReturned) {
-                    return b.releaseDate.getTime() - a.releaseDate.getTime(); // Latest release first
-                }
-                
-                // If one died and returned, other died but not returned
-                if (aDiedButReturned && !bDiedButReturned) {
-                    return -1; // returned bodies appear before those still held
-                }
-                if (!aDiedButReturned && bDiedButReturned) {
-                    return 1; // returned bodies appear before those still held
-                }
-                
-                // Both still alive or both in same category - continue with normal sorting
-            }
-            
             // Within each lane, sort by event order
             // Earlier transitions appear higher (lower eventOrder value = higher position)
             if (a.eventOrder !== b.eventOrder) {
@@ -421,7 +387,7 @@ class LaneManager {
         const positionKey = `${hostageId}-${targetLane}`;
         let position = this.lanePositionMap.get(positionKey);
         
-        console.log(`[DEBUG] Looking up position for key: "${positionKey}", found: ${position}`);
+
         
         if (position === undefined) {
             // Fallback: assign next available position in this lane
@@ -437,8 +403,7 @@ class LaneManager {
         const spacing = this.config.lineWidth + this.config.lineSpacing;
         const lineY = lane.yStart + this.config.lanePadding + (position * spacing);
         
-        // Debug logging
-        console.log(`[Y-COORD] getHostageY: ${hostageId} in ${targetLane}, position=${position}, lineY=${lineY}, spacing=${spacing}`);
+
         
         return lineY;
     }

@@ -15,12 +15,96 @@
     <link rel="stylesheet" href="css/styles.css">
     
     <style>
+        /* Layout Structure */
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+        
+        .app-header {
+            height: 50px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+            border-bottom: 2px solid #1a252f;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .app-header h1 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #ecf0f1;
+        }
+        
+        .header-stats .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .header-stats .stat-value {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .header-stats .stat-label {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+        
+        .app-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+        
+        .app-footer {
+            height: 50px;
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-top: 2px solid #1a252f;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .app-footer .live-count {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        /* Timeline Container */
+        .timeline-container {
+            flex: 1;
+            overflow: auto;
+            background: white;
+        }
+        
         /* Loading states */
         .loading {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 200px;
+            height: 100%;
             font-size: 18px;
             color: #666;
         }
@@ -29,7 +113,7 @@
             background: #fee;
             border: 1px solid #fcc;
             padding: 20px;
-            margin: 20px;
+            margin: 10px;
             border-radius: 8px;
             color: #c33;
             direction: ltr;
@@ -50,7 +134,7 @@
         .stats {
             background: #f9f9f9;
             padding: 15px;
-            margin: 20px;
+            margin: 10px;
             border-radius: 8px;
             direction: ltr;
             text-align: left;
@@ -58,47 +142,40 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1 class="title">נתיבי גורל החטופים</h1>
-            <p class="subtitle">ויזואליזציית זמן מקיפה - מ-7 באוקטובר ועד היום</p>
-            <div class="urgent-banner">
-                <div id="live-count">טוען נתונים...</div>
+    <div class="app-layout">
+        <!-- Fixed Header -->
+        <header class="app-header">
+            <h1>נתיבי גורל החטופים - ויזואליזציית זמן מקיפה</h1>
+            <div id="header-stats" class="header-stats" style="display: none;">
+                <!-- Stats will be populated here -->
             </div>
         </header>
 
-        <!-- Statistics Panel -->
-        <div id="stats-panel" class="stats" style="display: none;">
-            <h3>סטטיסטיקות עיבוד נתונים</h3>
-            <div id="stats-content"></div>
-        </div>
-
-        <!-- Error Panel -->
-        <div id="error-panel" class="error" style="display: none;">
-            <h3>שגיאות בעיבוד הנתונים</h3>
-            <div id="error-content"></div>
-        </div>
-
-        <!-- Loading State -->
-        <div id="loading" class="loading">
-            טוען נתונים ומעבד קובץ CSV...
-        </div>
-
-        <!-- Main Visualization -->
-        <div id="visualization-container" style="display: none;">
-            <div id="timeline-controls" class="controls">
-                <!-- Future: Add controls for filtering, animation, etc. -->
+        <!-- Main Content Area -->
+        <main class="app-main">
+            <!-- Error Panel -->
+            <div id="error-panel" class="error" style="display: none;">
+                <h3>שגיאות בעיבוד הנתונים</h3>
+                <div id="error-content"></div>
             </div>
-            
-            <div id="main-timeline" class="timeline-wrapper">
-                <!-- SVG will be inserted here -->
+
+            <!-- Loading State -->
+            <div id="loading" class="loading">
+                טוען נתונים ומעבד קובץ CSV...
             </div>
-            
-            <div id="legend" class="legend">
-                <!-- Lane labels and legend will be inserted here -->
+
+            <!-- Timeline Container - Direct timeline without wrapper -->
+            <div id="visualization-container" class="timeline-container" style="display: none;">
+                <div id="main-timeline">
+                    <!-- SVG will be inserted here -->
+                </div>
             </div>
-        </div>
+        </main>
+
+        <!-- Fixed Footer -->
+        <footer class="app-footer">
+            <div id="live-count" class="live-count">טוען נתונים...</div>
+        </footer>
     </div>
 
     <!-- Tooltip (positioned absolutely) -->

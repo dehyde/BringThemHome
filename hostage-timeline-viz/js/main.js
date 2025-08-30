@@ -20,8 +20,7 @@ class HostageTimelineApp {
             loading: document.getElementById('loading'),
             errorPanel: document.getElementById('error-panel'),
             errorContent: document.getElementById('error-content'),
-            statsPanel: document.getElementById('stats-panel'),
-            statsContent: document.getElementById('stats-content'),
+            headerStats: document.getElementById('header-stats'),
             visualizationContainer: document.getElementById('visualization-container'),
             liveCount: document.getElementById('live-count')
         };
@@ -302,8 +301,28 @@ class HostageTimelineApp {
             });
         }
         
-        this.elements.statsContent.innerHTML = statsHTML;
-        this.elements.statsPanel.style.display = 'block';
+        // Convert stats to header format
+        const headerStatsHTML = `
+            <div class="stat">
+                <div class="stat-value">${stats.total}</div>
+                <div class="stat-label">סך הכל</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">${Object.values(stats.byLane).reduce((sum, count) => sum + count, 0)}</div>
+                <div class="stat-label">מעובד</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">${stats.withTransitions}</div>
+                <div class="stat-label">עם מעברים</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">${stats.errors}</div>
+                <div class="stat-label">שגיאות</div>
+            </div>
+        `;
+        
+        this.elements.headerStats.innerHTML = headerStatsHTML;
+        this.elements.headerStats.style.display = 'flex';
     }
 
     /**
