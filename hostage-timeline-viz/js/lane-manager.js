@@ -10,9 +10,9 @@ class LaneManager {
         this.sortedData = [];
         this.lanePositionMap = new Map(); // NEW: Track position per hostage per lane
         this.config = {
-            lineSpacing: 4, // Base spacing between lines
-            lanePadding: 8, // Internal lane padding
-            sectionSpacing: 20, // Space between major sections
+            lineSpacing: 8, // Base spacing between lines - increased for better visibility
+            lanePadding: 12, // Internal lane padding - increased  
+            sectionSpacing: 30, // Space between major sections - increased
             lineWidth: 1.5,
             turnRadius: 4 // For transitions
         };
