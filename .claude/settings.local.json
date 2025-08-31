@@ -29,7 +29,15 @@
       "WebFetch(domain:www.jpost.com)",
       "WebFetch(domain:www.cnn.com)",
       "WebFetch(domain:www.cbsnews.com)",
-      "WebFetch(domain:www.haaretz.com)"
+      "WebFetch(domain:www.haaretz.com)",
+      "Bash(node:*)",
+      "Bash(lsof:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:observablehq.com)",
+      "WebFetch(domain:plotly.com)",
+      "Bash(cp:*)",
+      "WebFetch(domain:api.plotly.com)",
+      "WebFetch(domain:chart-studio.plotly.com)"
     ],
     "deny": []
   }

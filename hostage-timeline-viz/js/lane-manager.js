@@ -132,7 +132,13 @@ class LaneManager {
                 return a.laneDef.priority - b.laneDef.priority;
             }
             
-            // Within each lane, sort by event order
+            // Special sorting for kidnapped-living lane
+            if (a.laneId === 'kidnapped-living' && b.laneId === 'kidnapped-living') {
+                console.log(`[DEBUG] Sorting kidnapped-living: ${a['Hebrew Name']} vs ${b['Hebrew Name']}`);
+                return this.sortWithinKidnappedLivingLane(a, b);
+            }
+            
+            // Within other lanes, sort by event order
             // Earlier transitions appear higher (lower eventOrder value = higher position)
             if (a.eventOrder !== b.eventOrder) {
                 return a.eventOrder - b.eventOrder;
@@ -143,6 +149,66 @@ class LaneManager {
             const nameB = b['Hebrew Name'] || '';
             return nameA.localeCompare(nameB, 'he');
         });
+    }
+
+    /**
+     * Sort hostages within the kidnapped-living lane according to specific requirements
+     * Order: 1) Released alive (earliest first), 2) Still alive in captivity (alphabetical), 3) Died in captivity at bottom (latest death first, including those whose bodies were later returned)
+     * @param {Object} a - First hostage record
+     * @param {Object} b - Second hostage record  
+     * @returns {number} Sort comparison result
+     */
+    sortWithinKidnappedLivingLane(a, b) {
+        console.log(`[DEBUG] sortWithinKidnappedLivingLane called for: ${a['Hebrew Name']} vs ${b['Hebrew Name']}`);
+        
+        // Helper function to determine hostage category
+        const getCategory = (hostage) => {
+            // Check if hostage died in captivity (regardless of whether later released)
+            // This includes hostages whose bodies were later returned
+            // Also check status for deceased even if date parsing failed
+            const isDead = hostage.deathDate_valid || 
+                          (hostage['Current Status'] && hostage['Current Status'].toLowerCase().includes('deceased'));
+            
+            if (isDead) {
+                // Use death date if available, otherwise use a default sort key
+                const sortKey = hostage.deathDate_valid ? 
+                    hostage.deathDate.getTime() : 
+                    new Date('2024-01-01').getTime(); // Default for cases where death date parsing failed
+                console.log(`[DEBUG] ${hostage['Hebrew Name']} categorized as 'died', sortKey: ${new Date(sortKey).toISOString().split('T')[0]}`);
+                return { type: 'died', sortKey };
+            }
+            
+            // Check if hostage was released alive (has valid release date and not deceased)
+            if (hostage.releaseDate_valid && !isDead) {
+                console.log(`[DEBUG] ${hostage['Hebrew Name']} categorized as 'released'`);
+                return { type: 'released', sortKey: hostage.releaseDate.getTime() };
+            }
+            
+            // Still alive in captivity (no death indication, no release date)
+            console.log(`[DEBUG] ${hostage['Hebrew Name']} categorized as 'alive'`);
+            return { type: 'alive', sortKey: hostage['Hebrew Name'] || '' };
+        };
+        
+        const categoryA = getCategory(a);
+        const categoryB = getCategory(b);
+        
+        // Primary sort: Released alive (1) -> Still alive (2) -> Died in captivity (3)
+        const categoryOrder = { 'released': 1, 'alive': 2, 'died': 3 };
+        if (categoryOrder[categoryA.type] !== categoryOrder[categoryB.type]) {
+            return categoryOrder[categoryA.type] - categoryOrder[categoryB.type];
+        }
+        
+        // Within same category, apply specific sorting:
+        if (categoryA.type === 'released') {
+            // Released: earliest release date first
+            return categoryA.sortKey - categoryB.sortKey;
+        } else if (categoryA.type === 'died') {
+            // Died: latest death first (reverse chronological order)
+            return categoryB.sortKey - categoryA.sortKey;
+        } else {
+            // Alive: alphabetical by Hebrew name
+            return categoryA.sortKey.localeCompare(categoryB.sortKey, 'he');
+        }
     }
 
     /**
