@@ -101,13 +101,13 @@ class SankeyRTL {
         // 🔍 TOPPATH: Debug node and link values before Sankey
         console.log(`🔍 TOPPATH-PRE-SANKEY: Checking data integrity`);
         rtlData.nodes.forEach(node => {
-            if (node.id === 'alive-oct7' || node.id === 'released-deal' || node.id === 'released-military') {
-                console.log(`🔍 NODE-VALUES: ${node.id} value=${node.value} subdivisions=${JSON.stringify(node.subdivisions)}`);
+            if (node.id === 'alive-oct7' || node.id?.includes('released-deal') || node.id?.includes('released-military')) {
+                console.log(`🔍 NODE-VALUES: ${node.id} value=${node.value} hostageCount=${node.hostageCount}`);
             }
         });
         
         rtlData.links.forEach(link => {
-            if (link.source.id === 'alive-oct7') {
+            if (link.source.id === 'alive-oct7' && (link.target.id?.includes('released-deal') || link.target.id?.includes('released-military'))) {
                 console.log(`🔍 LINK-VALUES: ${link.source.id}->${link.target.id} value=${link.value} hostages=${link.hostages?.length}`);
             }
         });
@@ -154,27 +154,70 @@ class SankeyRTL {
         // 🔍 TOPPATH: Final verification
         const finalLinks = this.svg.selectAll('.sankey-link').filter(function(d) {
             return d.source?.id === 'alive-oct7' && 
-                (d.target?.id === 'released-deal' || d.target?.id === 'released-military');
+                (d.target?.id === 'released-deal-living' || d.target?.id === 'released-military-living');
         });
-        console.log(`🔍 TOPPATH-FINAL: ${finalLinks.size()} critical links rendered in DOM`);
+        console.log(`🔍 TOPPATH-FINAL: ${finalLinks.size()} critical living released links rendered in DOM`);
     }
 
     /**
-     * Apply simple RTL positioning (x-coordinates only, preserve y-coordinates)
+     * Apply RTL positioning with visual grouping for living/deceased pairs
      */
     applySimpleRTL(data) {
         const { width } = this.options;
         
-        // Only adjust x-coordinates, let D3 Sankey handle y-coordinates
+        // Group Step 2 nodes by category for visual pairing
+        const step2Groups = {
+            'released-deal': [],
+            'released-military': [],
+            'still-held': []
+        };
+        
         data.nodes.forEach(node => {
             if (node.step === 1) {
                 // Step 1: Right side (Oct 7th status)
                 node.x0 = width * 0.75;
                 node.x1 = node.x0 + this.options.nodeWidth;
             } else if (node.step === 2) {
-                // Step 2: Left side (final outcome with subgroups)
+                // Step 2: Left side, group by category
                 node.x0 = 50;
                 node.x1 = node.x0 + this.options.nodeWidth;
+                
+                // Identify category for grouping
+                const category = node.id.replace(/-living|-deceased$/, '');
+                if (step2Groups[category]) {
+                    step2Groups[category].push(node);
+                }
+            }
+        });
+        
+        // Position grouped nodes (living above deceased with small gap)
+        Object.values(step2Groups).forEach(group => {
+            if (group.length === 2) {
+                // Sort: living first, deceased second
+                group.sort((a, b) => {
+                    if (a.id.endsWith('-living') && b.id.endsWith('-deceased')) return -1;
+                    if (a.id.endsWith('-deceased') && b.id.endsWith('-living')) return 1;
+                    return 0;
+                });
+                
+                // Adjust positioning for visual pairing
+                const livingNode = group[0];
+                const deceasedNode = group[1];
+                const gap = 5; // Small gap between living/deceased
+                
+                if (livingNode && deceasedNode) {
+                    // Ensure they're positioned close together
+                    const avgY = (livingNode.y0 + livingNode.y1 + deceasedNode.y0 + deceasedNode.y1) / 4;
+                    const livingHeight = livingNode.y1 - livingNode.y0;
+                    const deceasedHeight = deceasedNode.y1 - deceasedNode.y0;
+                    
+                    livingNode.y0 = avgY - (livingHeight / 2) - gap;
+                    livingNode.y1 = avgY + (livingHeight / 2) - gap;
+                    deceasedNode.y0 = avgY - (deceasedHeight / 2) + gap;
+                    deceasedNode.y1 = avgY + (deceasedHeight / 2) + gap;
+                    
+                    console.log(`🔍 TOPPATH-GROUPING: Paired ${livingNode.id} and ${deceasedNode.id}`);
+                }
             }
         });
     }
@@ -206,7 +249,7 @@ class SankeyRTL {
         links.each(function(d) {
             d3.select(this).datum().element = this;
             const isCritical = d.source?.id === 'alive-oct7' && 
-                (d.target?.id === 'released-deal' || d.target?.id === 'released-military');
+                (d.target?.id === 'released-deal-living' || d.target?.id === 'released-military-living');
             if (isCritical) {
                 const style = window.getComputedStyle(this);
                 const bbox = this.getBBox();
@@ -239,7 +282,7 @@ class SankeyRTL {
             // 🔍 TOP-PATH-DEBUG: Track critical links during rendering  
             const isLivingReleasedLink = link.source && link.target &&
                 link.source.id === 'alive-oct7' && 
-                (link.target.id === 'released-deal' || link.target.id === 'released-military');
+                (link.target.id === 'released-deal-living' || link.target.id === 'released-military-living');
             
             if (isLivingReleasedLink) {
                 console.log(`🔍 TOPPATH-GRADIENT: ${link.source.id}->${link.target.id}`);

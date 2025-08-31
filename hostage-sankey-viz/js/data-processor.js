@@ -206,9 +206,13 @@ class SankeyDataProcessor {
         const links = [];
         const linkMap = new Map();
         
-        // Create nodes for 2-step flow
+        // Create nodes for 2-step flow with full subdivisions
         const step1Nodes = ['alive-oct7', 'deceased-oct7'];
-        const step2Nodes = ['released-deal', 'released-military', 'still-held'];
+        const step2Nodes = [
+            'released-deal-living', 'released-deal-deceased',
+            'released-military-living', 'released-military-deceased', 
+            'still-held-living', 'still-held-deceased'
+        ];
         
         let nodeIndex = 0;
         
@@ -225,17 +229,14 @@ class SankeyDataProcessor {
             nodeMap.set(nodeId, node.index);
         });
         
-        // Add Step 2 nodes with subdivision data (final outcomes)
+        // Add Step 2 nodes as individual subdivisions
         step2Nodes.forEach(nodeId => {
-            // Calculate subdivision counts
-            const livingCount = this.processedData.filter(r => 
-                r.step2 && r.step2.startsWith(nodeId) && r.isAlive === true).length;
-            const deceasedCount = this.processedData.filter(r => 
-                r.step2 && r.step2.startsWith(nodeId) && r.isAlive === false).length;
-                
+            // Count hostages for this specific subdivision
+            const hostageCount = this.processedData.filter(r => r.step2 === nodeId).length;
+            
             // Log subdivision counts for critical nodes
-            if (nodeId === 'released-deal' || nodeId === 'released-military') {
-                console.log(`🔍 TOPPATH-NODE: ${nodeId} = Living:${livingCount} Deceased:${deceasedCount}`);
+            if (nodeId.includes('released-deal') || nodeId.includes('released-military')) {
+                console.log(`🔍 TOPPATH-NODE: ${nodeId} = ${hostageCount} hostages`);
             }
             
             const node = {
@@ -244,17 +245,13 @@ class SankeyDataProcessor {
                 step: 2,
                 index: nodeIndex++,
                 color: this.colors[nodeId],
-                subdivisions: {
-                    living: livingCount,
-                    deceased: deceasedCount,
-                    total: livingCount + deceasedCount
-                }
+                hostageCount: hostageCount
             };
             nodes.push(node);
             nodeMap.set(nodeId, node.index);
         });
         
-        // Generate links by counting flows (2 steps)
+        // Generate links by counting flows (2 steps) - preserve full subdivisions
         this.processedData.forEach(record => {
             // Skip records with missing steps
             if (!record.step1 || !record.step2) {
@@ -262,14 +259,11 @@ class SankeyDataProcessor {
                 return;
             }
             
-            // Extract base outcome type from detailed step2 (e.g., 'released-deal' from 'released-deal-living')
-            const step2Base = record.step2.replace(/-living|-deceased/, '');
-            
-            // Step 1 -> Step 2 link using base outcome
-            const linkKey = `${record.step1}-${step2Base}`;
+            // Use the full step2 classification (e.g., 'released-deal-living')
+            const linkKey = `${record.step1}-${record.step2}`;
             
             // Check if both nodes exist
-            if (!nodeMap.has(record.step1) || !nodeMap.has(step2Base)) {
+            if (!nodeMap.has(record.step1) || !nodeMap.has(record.step2)) {
                 console.warn('[SANKEY-DATA] Missing nodes for link:', linkKey, record);
                 return;
             }
@@ -277,7 +271,7 @@ class SankeyDataProcessor {
             if (!linkMap.has(linkKey)) {
                 linkMap.set(linkKey, {
                     source: nodeMap.get(record.step1),
-                    target: nodeMap.get(step2Base),
+                    target: nodeMap.get(record.step2),
                     value: 0,
                     hostages: []
                 });
@@ -286,8 +280,8 @@ class SankeyDataProcessor {
             linkMap.get(linkKey).hostages.push(record);
         });
         
-        // 🔍 TOPPATH: Summary of critical living->released links
-        const criticalPaths = ['alive-oct7-released-deal', 'alive-oct7-released-military'];
+        // 🔍 TOPPATH: Summary of critical living->released links (now with subdivisions)
+        const criticalPaths = ['alive-oct7-released-deal-living', 'alive-oct7-released-military-living'];
         criticalPaths.forEach(path => {
             if (linkMap.has(path)) {
                 console.log(`🔍 TOPPATH-DATA: ${path} = ${linkMap.get(path).value} hostages`);
@@ -365,9 +359,12 @@ class SankeyDataProcessor {
         const labels = {
             'alive-oct7': 'חיים ב-7.10',
             'deceased-oct7': 'נפטרו ב-7.10',
-            'released-deal': 'שוחררו בעסקה',
-            'released-military': 'שוחררו במבצע',
-            'still-held': 'עדיין בשבי'
+            'released-deal-living': 'שוחררו בעסקה - חיים',
+            'released-deal-deceased': 'שוחררו בעסקה - נפטרו',
+            'released-military-living': 'שוחררו במבצע - חיים',
+            'released-military-deceased': 'שוחררו במבצע - נפטרו',
+            'still-held-living': 'עדיין בשבי - חיים',
+            'still-held-deceased': 'עדיין בשבי - נפטרו'
         };
         return labels[nodeId] || nodeId;
     }
