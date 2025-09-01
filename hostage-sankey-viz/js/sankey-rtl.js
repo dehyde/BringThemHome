@@ -132,6 +132,15 @@ class SankeyRTL {
             }
         });
         
+        // 🔍 ALIGNMENT-FIX: Store original link path data before any transformations
+        console.log(`🔍 ALIGNMENT-FIX: Storing original link positions before transformations`);
+        rtlData.links.forEach(link => {
+            link.originalY0 = link.y0;
+            link.originalY1 = link.y1;
+            link.originalX0 = link.x0;
+            link.originalX1 = link.x1;
+        });
+        
         // Apply RTL transformation (flip x-coordinates only, preserve D3's y positions)
         this.applyRTLTransformation(rtlData);
         
@@ -140,6 +149,9 @@ class SankeyRTL {
         
         // Apply controlled positioning that maintains path connections
         this.applyControlledGroupPositioning(rtlData, visualGroups);
+        
+        // 🔍 ALIGNMENT-FIX: Recalculate all link paths after final node positioning
+        this.recalculateLinkPaths(rtlData);
         
         // Clear previous rendering
         this.svg.selectAll('.sankey-node, .sankey-link, .step-label').remove();
@@ -286,20 +298,6 @@ class SankeyRTL {
                 node.y1 += offset;
             });
             
-            // CRITICAL: Update link positions to follow nodes
-            data.links.forEach(link => {
-                if (link.target && group.nodes.includes(link.target)) {
-                    // Recalculate link end position
-                    const targetCenter = (link.target.y0 + link.target.y1) / 2;
-                    link.y1 = targetCenter;
-                }
-                if (link.source && group.nodes.includes(link.source)) {
-                    // Recalculate link start position
-                    const sourceCenter = (link.source.y0 + link.source.y1) / 2;
-                    link.y0 = sourceCenter;
-                }
-            });
-            
             // Ensure living is above deceased within each group
             if (group.livingNode && group.deceasedNode) {
                 const totalHeight = group.y1 - group.y0 - subdivisionGap;
@@ -317,6 +315,45 @@ class SankeyRTL {
                 console.log(`🔍 GROUPING: ${groupId} subdivisions: living=${livingHeight.toFixed(1)}px, deceased=${deceasedHeight.toFixed(1)}px, gap=${subdivisionGap}px`);
             }
         });
+    }
+
+    /**
+     * Recalculate link paths after node repositioning
+     */
+    recalculateLinkPaths(data) {
+        console.log(`🔍 ALIGNMENT-FIX: Recalculating link paths for ${data.links.length} links after node repositioning`);
+        
+        // For each link, recalculate y0 and y1 based on current node positions
+        data.links.forEach(link => {
+            const sourceNode = link.source;
+            const targetNode = link.target;
+            
+            if (sourceNode && targetNode) {
+                // Calculate vertical center of source node
+                const sourceCenter = (sourceNode.y0 + sourceNode.y1) / 2;
+                
+                // Calculate vertical center of target node  
+                const targetCenter = (targetNode.y0 + targetNode.y1) / 2;
+                
+                // Store old positions for debugging
+                const oldY0 = link.y0;
+                const oldY1 = link.y1;
+                
+                // Update link endpoints to match current node positions
+                link.y0 = sourceCenter;
+                link.y1 = targetCenter;
+                
+                // For x positions, use the current node edges
+                link.x0 = sourceNode.x1; // Source node right edge (for RTL)
+                link.x1 = targetNode.x0; // Target node left edge (for RTL)
+                
+                if (oldY0 !== link.y0 || oldY1 !== link.y1) {
+                    console.log(`🔍 ALIGNMENT-FIX: ${sourceNode.id}->${targetNode.id} path updated: y0=${oldY0.toFixed(1)}->${link.y0.toFixed(1)}, y1=${oldY1.toFixed(1)}->${link.y1.toFixed(1)}`);
+                }
+            }
+        });
+        
+        console.log(`🔍 ALIGNMENT-FIX: Link path recalculation complete`);
     }
 
 
@@ -341,10 +378,9 @@ class SankeyRTL {
             .style('fill', 'none')
             .style('stroke-opacity', 0.8);
         
-        // Store link data for individual path highlighting
-        // Store link data and check critical links in DOM
+        // 🔍 INTERACTION-FIX: Store DOM element references for individual hostage highlighting
         links.each(function(d) {
-            d3.select(this).datum().element = this;
+            d.element = this;  // Store the DOM element directly on the data object
             const isCritical = d.source?.id === 'alive-oct7' && 
                 (d.target?.id === 'released-deal-living' || d.target?.id === 'released-military-living');
             if (isCritical) {
@@ -780,6 +816,7 @@ class SankeyRTL {
         
         // Link hover effects
         links
+            .each(function(d) { d.element = this; })  // Store DOM reference for interaction
             .on('mouseover', (event, d) => {
                 this.highlightLink(d, true);
                 this.showTooltip(event, d, 'link');
