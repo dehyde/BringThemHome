@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rectangle-Path Alignment Test</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; direction: rtl; margin: 20px; }
+        .test-container { border: 2px solid #333; padding: 20px; margin-bottom: 20px; }
+        .sankey-link { opacity: 0.7; fill: none; }
+        .sankey-node rect { stroke: #000; stroke-width: 1px; }
+        .alignment-test { background-color: #f0f0f0; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Rectangle-Path Alignment Test</h1>
+    
+    <div class="test-container">
+        <h2>Before Fix: Manual Position Override (Broken Alignment)</h2>
+        <div id="test-broken"></div>
+    </div>
+    
+    <div class="test-container">
+        <h2>After Fix: D3 Calculated Positions + RTL Flip (Proper Alignment)</h2>
+        <div id="test-fixed"></div>
+    </div>
+    
+    <script>
+        // Test data
+        const testData = {
+            nodes: [
+                { id: 'alive-oct7', name: 'חיים ב-7.10', step: 1, index: 0 },
+                { id: 'released-deal-living', name: 'שוחררו בעסקה - חיים', step: 2, index: 1 },
+                { id: 'released-military-living', name: 'שוחררו במבצע - חיים', step: 2, index: 2 }
+            ],
+            links: [
+                { source: 0, target: 1, value: 133 },
+                { source: 0, target: 2, value: 8 }
+            ]
+        };
+
+        function setupSankeyData(data) {
+            // Deep clone to avoid mutation
+            const clonedData = JSON.parse(JSON.stringify(data));
+            
+            // Setup node references and values
+            clonedData.nodes.forEach(node => {
+                node.value = 0;
+                node.sourceLinks = [];
+                node.targetLinks = [];
+            });
+            
+            clonedData.links.forEach(link => {
+                const sourceNode = clonedData.nodes[link.source];
+                const targetNode = clonedData.nodes[link.target];
+                
+                sourceNode.sourceLinks.push(link);
+                targetNode.targetLinks.push(link);
+                sourceNode.value += link.value;
+                
+                link.source = sourceNode;
+                link.target = targetNode;
+            });
+            
+            // Terminal nodes get value from incoming links
+            clonedData.nodes.forEach(node => {
+                if (node.sourceLinks.length === 0) {
+                    node.value = node.targetLinks.reduce((sum, link) => sum + link.value, 0);
+                }
+            });
+            
+            return clonedData;
+        }
+
+        function renderBrokenVersion() {
+            const data = setupSankeyData(testData);
+            const width = 400, height = 200;
+            
+            const svg = d3.select('#test-broken')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            // Create Sankey layout
+            const sankey = d3.sankey()
+                .nodeWidth(20)
+                .nodePadding(10)
+                .extent([[0, 0], [width, height]]);
+            
+            // Let D3 calculate positions
+            sankey(data);
+            console.log('🔴 BROKEN: D3 calculated positions:', data.nodes.map(n => `${n.id}: x=${n.x0}-${n.x1}, y=${n.y0}-${n.y1}`));
+            
+            // BROKEN: Manual override (old applySimpleRTL logic)
+            data.nodes.forEach(node => {
+                if (node.step === 1) {
+                    node.x0 = width * 0.75;  // PROBLEM: Hardcoded position
+                    node.x1 = node.x0 + 20;
+                } else if (node.step === 2) {
+                    node.x0 = 50;           // PROBLEM: Hardcoded position  
+                    node.x1 = node.x0 + 20;
+                }
+            });
+            console.log('🔴 BROKEN: After manual override:', data.nodes.map(n => `${n.id}: x=${n.x0}-${n.x1}, y=${n.y0}-${n.y1}`));
+            
+            // Render with broken positions
+            renderSankey(svg, data, 'broken');
+        }
+
+        function renderFixedVersion() {
+            const data = setupSankeyData(testData);
+            const width = 400, height = 200;
+            
+            const svg = d3.select('#test-fixed')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            // Create Sankey layout
+            const sankey = d3.sankey()
+                .nodeWidth(20)
+                .nodePadding(10)
+                .extent([[0, 0], [width, height]]);
+            
+            // Let D3 calculate positions
+            sankey(data);
+            console.log('✅ FIXED: D3 calculated positions:', data.nodes.map(n => `${n.id}: x=${n.x0}-${n.x1}, y=${n.y0}-${n.y1}`));
+            
+            // FIXED: Only apply RTL flip, preserve y positions
+            data.nodes.forEach(node => {
+                const originalX0 = node.x0;
+                const originalX1 = node.x1;
+                
+                // Flip horizontally for RTL
+                node.x0 = width - originalX1;
+                node.x1 = width - originalX0;
+            });
+            console.log('✅ FIXED: After RTL flip only:', data.nodes.map(n => `${n.id}: x=${n.x0}-${n.x1}, y=${n.y0}-${n.y1}`));
+            
+            // Render with proper positions
+            renderSankey(svg, data, 'fixed');
+        }
+
+        function renderSankey(svg, data, type) {
+            const linkGenerator = d3.sankeyLinkHorizontal();
+            
+            // Render links
+            svg.selectAll('.sankey-link')
+                .data(data.links)
+                .enter()
+                .append('path')
+                .attr('class', 'sankey-link')
+                .attr('d', linkGenerator)
+                .style('stroke', '#999')
+                .style('stroke-width', d => Math.max(2, d.width))
+                .each(function(d) {
+                    const bbox = this.getBBox();
+                    console.log(`🔍 ${type.toUpperCase()}-LINK: ${d.source.id}->${d.target.id} bbox: x=${bbox.x.toFixed(1)} y=${bbox.y.toFixed(1)} height=${bbox.height.toFixed(1)}`);
+                });
+            
+            // Render nodes
+            svg.selectAll('.sankey-node')
+                .data(data.nodes)
+                .enter()
+                .append('rect')
+                .attr('class', 'sankey-node')
+                .attr('x', d => d.x0)
+                .attr('y', d => d.y0)
+                .attr('height', d => d.y1 - d.y0)
+                .attr('width', d => d.x1 - d.x0)
+                .style('fill', d => d.step === 1 ? '#3498db' : '#27ae60')
+                .style('stroke', '#000')
+                .each(function(d) {
+                    console.log(`🔍 ${type.toUpperCase()}-NODE: ${d.id} rect: x=${d.x0} y=${d.y0} width=${d.x1-d.x0} height=${d.y1-d.y0}`);
+                });
+            
+            // Node labels
+            svg.selectAll('.node-label')
+                .data(data.nodes)
+                .enter()
+                .append('text')
+                .attr('class', 'node-label')
+                .attr('x', d => d.step === 1 ? d.x0 - 6 : d.x1 + 6)
+                .attr('y', d => (d.y0 + d.y1) / 2)
+                .attr('dy', '0.35em')
+                .style('text-anchor', d => d.step === 1 ? 'end' : 'start')
+                .style('font-size', '10px')
+                .text(d => d.name);
+        }
+
+        // Run tests
+        setTimeout(() => {
+            console.log('🔍 ALIGNMENT-TEST: Starting broken version test...');
+            renderBrokenVersion();
+            
+            console.log('🔍 ALIGNMENT-TEST: Starting fixed version test...');
+            renderFixedVersion();
+            
+            console.log('🔍 ALIGNMENT-TEST: Compare the bbox positions above - fixed version should show proper alignment');
+        }, 100);
+    </script>
+</body>
+</html>

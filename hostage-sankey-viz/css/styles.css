@@ -361,3 +361,107 @@ body {
     font-size: 0.9rem;
     color: #2c3e50;
 }
+
+/* Visual Grouping Classes for Nodes (without position modifications) */
+.sankey-node.node-living {
+    /* Visual indicator for living hostages */
+    filter: brightness(1.1);
+}
+
+.sankey-node.node-deceased {
+    /* Visual indicator for deceased hostages */
+    filter: brightness(0.9);
+}
+
+.sankey-node.category-released-deal {
+    /* Visual grouping for deal-related outcomes */
+    stroke: #27ae60;
+    stroke-width: 1px;
+}
+
+.sankey-node.category-released-military {
+    /* Visual grouping for military-related outcomes */
+    stroke: #2980b9;
+    stroke-width: 1px;
+}
+
+.sankey-node.category-still-held {
+    /* Visual grouping for still held outcomes */
+    stroke: #f39c12;
+    stroke-width: 1px;
+}
+
+/* Comprehensive Grouping Styles */
+.sankey-group {
+    /* Container for grouped nodes */
+}
+
+.group-background {
+    /* Background rectangle for visual group boundaries */
+    opacity: 0.3;
+}
+
+.group-background:hover {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.subdivision {
+    /* Individual subdivision rectangles within groups */
+    cursor: pointer;
+}
+
+.subdivision:hover {
+    filter: brightness(1.1);
+    transition: filter 0.2s ease;
+}
+
+.subdivision-living {
+    /* Living hostage subdivisions */
+    filter: brightness(1.05);
+}
+
+.subdivision-deceased {
+    /* Deceased hostage subdivisions */
+    opacity: 0.8;
+}
+
+.subdivision-label {
+    /* Count labels within subdivisions */
+    pointer-events: none; /* Prevent interference with hover events */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.group-label {
+    /* Group category labels */
+    font-family: 'Segoe UI', Arial, sans-serif;
+    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+}
+
+/* Group-specific coloring */
+.group-released-deal .subdivision-living {
+    fill: #27ae60 !important; /* Green for deal releases */
+}
+
+.group-released-military .subdivision-living {
+    fill: #2980b9 !important; /* Blue for military releases */
+}
+
+.group-still-held .subdivision-living {
+    fill: #f39c12 !important; /* Orange for still held */
+}
+
+/* Responsive adjustments for grouped visualization */
+@media (max-width: 768px) {
+    .group-label {
+        font-size: 12px;
+    }
+    
+    .subdivision-label {
+        font-size: 9px;
+    }
+    
+    .group-background {
+        stroke-width: 0.5px;
+    }
+}

@@ -293,6 +293,39 @@ class SankeyDataProcessor {
         // Convert links map to array
         links.push(...linkMap.values());
         
+        // Add grouping metadata for visual pairing
+        const nodeGroups = {
+            'released-deal': ['released-deal-living', 'released-deal-deceased'],
+            'released-military': ['released-military-living', 'released-military-deceased'],
+            'still-held': ['still-held-living', 'still-held-deceased']
+        };
+        
+        // Add group information to each node
+        nodes.forEach(node => {
+            // Find which group this node belongs to
+            for (const [groupId, members] of Object.entries(nodeGroups)) {
+                if (members.includes(node.id)) {
+                    node.groupId = groupId;
+                    node.isLiving = node.id.includes('-living');
+                    node.subgroupIndex = node.isLiving ? 0 : 1; // 0 for top, 1 for bottom
+                    break;
+                }
+            }
+        });
+        
+        // Calculate group totals for proportional sizing
+        Object.entries(nodeGroups).forEach(([groupId, memberIds]) => {
+            const groupNodes = nodes.filter(n => memberIds.includes(n.id));
+            const totalValue = groupNodes.reduce((sum, n) => sum + n.value, 0);
+            
+            groupNodes.forEach(node => {
+                node.groupTotal = totalValue;
+                node.proportionInGroup = totalValue > 0 ? node.value / totalValue : 0;
+            });
+            
+            console.log(`🔍 GROUPING-DATA: ${groupId} total=${totalValue} (living: ${groupNodes.find(n => n.isLiving)?.value || 0}, deceased: ${groupNodes.find(n => !n.isLiving)?.value || 0})`);
+        });
+        
         // 🔍 TOPPATH: Calculate correct node values from connected links
         nodes.forEach(node => {
             node.value = 0;

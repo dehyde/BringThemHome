@@ -132,8 +132,14 @@ class SankeyRTL {
             }
         });
         
-        // Now apply RTL positioning (flip x-coordinates only)
-        this.applySimpleRTL(rtlData);
+        // Apply RTL transformation (flip x-coordinates only, preserve D3's y positions)
+        this.applyRTLTransformation(rtlData);
+        
+        // Create visual groups for Step 2 nodes
+        const visualGroups = this.createVisualGroups(rtlData);
+        
+        // Apply controlled positioning that maintains path connections
+        this.applyControlledGroupPositioning(rtlData, visualGroups);
         
         // Clear previous rendering
         this.svg.selectAll('.sankey-node, .sankey-link, .step-label').remove();
@@ -145,8 +151,8 @@ class SankeyRTL {
         // Render links first (so they appear behind nodes)
         this.renderLinks(rtlData);
         
-        // Render nodes
-        this.renderNodes(rtlData);
+        // Render nodes with visual grouping
+        this.renderNodes(rtlData, visualGroups);
         
         // Setup interactions
         this.setupInteractions();
@@ -160,64 +166,155 @@ class SankeyRTL {
     }
 
     /**
-     * Apply RTL positioning with visual grouping for living/deceased pairs
+     * Apply RTL transformation - flip horizontally but preserve D3's y positions
      */
-    applySimpleRTL(data) {
+    applyRTLTransformation(data) {
         const { width } = this.options;
         
-        // Group Step 2 nodes by category for visual pairing
-        const step2Groups = {
-            'released-deal': [],
-            'released-military': [],
-            'still-held': []
-        };
+        console.log(`🔍 ALIGNMENT-FIX: Applying RTL transformation, preserving D3 positions`);
+        
+        // Apply ONLY horizontal flip for RTL, preserve all y positions calculated by D3
+        data.nodes.forEach(node => {
+            // Store original D3-calculated positions
+            const originalX0 = node.x0;
+            const originalX1 = node.x1;
+            
+            // Flip horizontally for RTL layout
+            node.x0 = width - originalX1;
+            node.x1 = width - originalX0;
+            
+            console.log(`🔍 ALIGNMENT-FIX: ${node.id} RTL flip: x=${originalX0}-${originalX1} → ${node.x0}-${node.x1}, y=${node.y0}-${node.y1} (preserved)`);
+        });
+        
+        // Links will automatically use the updated node positions via linkGenerator
+        console.log(`🔍 ALIGNMENT-FIX: RTL transformation complete - paths will align with nodes`);
+    }
+
+    /**
+     * Create visual groups from individual nodes
+     */
+    createVisualGroups(data) {
+        console.log(`🔍 GROUPING: Creating visual groups from step 2 nodes`);
+        
+        // Group nodes by their groupId
+        const groups = new Map();
         
         data.nodes.forEach(node => {
-            if (node.step === 1) {
-                // Step 1: Right side (Oct 7th status)
-                node.x0 = width * 0.75;
-                node.x1 = node.x0 + this.options.nodeWidth;
-            } else if (node.step === 2) {
-                // Step 2: Left side, group by category
-                node.x0 = 50;
-                node.x1 = node.x0 + this.options.nodeWidth;
+            if (node.step === 2 && node.groupId) {
+                if (!groups.has(node.groupId)) {
+                    groups.set(node.groupId, {
+                        id: node.groupId,
+                        nodes: [],
+                        x0: null,
+                        x1: null,
+                        y0: null,
+                        y1: null,
+                        livingNode: null,
+                        deceasedNode: null
+                    });
+                }
                 
-                // Identify category for grouping
-                const category = node.id.replace(/-living|-deceased$/, '');
-                if (step2Groups[category]) {
-                    step2Groups[category].push(node);
+                const group = groups.get(node.groupId);
+                group.nodes.push(node);
+                
+                if (node.isLiving) {
+                    group.livingNode = node;
+                } else {
+                    group.deceasedNode = node;
                 }
             }
         });
         
-        // Position grouped nodes (living above deceased with small gap)
-        Object.values(step2Groups).forEach(group => {
-            if (group.length === 2) {
-                // Sort: living first, deceased second
-                group.sort((a, b) => {
-                    if (a.id.endsWith('-living') && b.id.endsWith('-deceased')) return -1;
-                    if (a.id.endsWith('-deceased') && b.id.endsWith('-living')) return 1;
-                    return 0;
+        // Calculate group bounds
+        groups.forEach(group => {
+            // X position is same for all nodes in group (leftmost for RTL)
+            group.x0 = Math.min(...group.nodes.map(n => n.x0));
+            group.x1 = Math.max(...group.nodes.map(n => n.x1));
+            
+            // Y position spans all nodes in group
+            group.y0 = Math.min(...group.nodes.map(n => n.y0));
+            group.y1 = Math.max(...group.nodes.map(n => n.y1));
+            
+            console.log(`🔍 GROUPING: ${group.id} bounds: x=${group.x0}-${group.x1}, y=${group.y0}-${group.y1}, nodes=${group.nodes.length}`);
+        });
+        
+        return groups;
+    }
+
+    /**
+     * Apply controlled group positioning while maintaining path connections
+     */
+    applyControlledGroupPositioning(data, groups) {
+        const { height } = this.options;
+        const subdivisionGap = 5;
+        
+        console.log(`🔍 GROUPING: Applying controlled positioning for ${groups.size} groups`);
+        
+        // Define desired group positions (top to bottom: deals, military, still-held)
+        const groupPositions = {
+            'released-deal': 0.2,      // Top 20% of height
+            'released-military': 0.5,  // Middle 50% of height
+            'still-held': 0.8          // Bottom 80% of height
+        };
+        
+        // Calculate desired positions
+        const desiredPositions = new Map();
+        for (const [groupId, fraction] of Object.entries(groupPositions)) {
+            if (groups.has(groupId)) {
+                const group = groups.get(groupId);
+                const groupHeight = group.y1 - group.y0;
+                desiredPositions.set(groupId, {
+                    center: height * fraction,
+                    height: groupHeight
                 });
-                
-                // Adjust positioning for visual pairing
-                const livingNode = group[0];
-                const deceasedNode = group[1];
-                const gap = 5; // Small gap between living/deceased
-                
-                if (livingNode && deceasedNode) {
-                    // Ensure they're positioned close together
-                    const avgY = (livingNode.y0 + livingNode.y1 + deceasedNode.y0 + deceasedNode.y1) / 4;
-                    const livingHeight = livingNode.y1 - livingNode.y0;
-                    const deceasedHeight = deceasedNode.y1 - deceasedNode.y0;
-                    
-                    livingNode.y0 = avgY - (livingHeight / 2) - gap;
-                    livingNode.y1 = avgY + (livingHeight / 2) - gap;
-                    deceasedNode.y0 = avgY - (deceasedHeight / 2) + gap;
-                    deceasedNode.y1 = avgY + (deceasedHeight / 2) + gap;
-                    
-                    console.log(`🔍 TOPPATH-GROUPING: Paired ${livingNode.id} and ${deceasedNode.id}`);
+            }
+        }
+        
+        // Apply smooth transitions that maintain link connections
+        groups.forEach((group, groupId) => {
+            const desired = desiredPositions.get(groupId);
+            if (!desired) return;
+            
+            const currentCenter = (group.y0 + group.y1) / 2;
+            const offset = desired.center - currentCenter;
+            
+            console.log(`🔍 GROUPING: ${groupId} moving by offset=${offset.toFixed(1)}px`);
+            
+            // Apply offset to all nodes in group
+            group.nodes.forEach(node => {
+                node.y0 += offset;
+                node.y1 += offset;
+            });
+            
+            // CRITICAL: Update link positions to follow nodes
+            data.links.forEach(link => {
+                if (link.target && group.nodes.includes(link.target)) {
+                    // Recalculate link end position
+                    const targetCenter = (link.target.y0 + link.target.y1) / 2;
+                    link.y1 = targetCenter;
                 }
+                if (link.source && group.nodes.includes(link.source)) {
+                    // Recalculate link start position
+                    const sourceCenter = (link.source.y0 + link.source.y1) / 2;
+                    link.y0 = sourceCenter;
+                }
+            });
+            
+            // Ensure living is above deceased within each group
+            if (group.livingNode && group.deceasedNode) {
+                const totalHeight = group.y1 - group.y0 - subdivisionGap;
+                
+                // Position living at top of group space
+                const livingHeight = Math.max(20, totalHeight * group.livingNode.proportionInGroup);
+                group.livingNode.y0 = group.y0;
+                group.livingNode.y1 = group.y0 + livingHeight;
+                
+                // Position deceased below with gap
+                const deceasedHeight = Math.max(20, totalHeight * group.deceasedNode.proportionInGroup);
+                group.deceasedNode.y0 = group.livingNode.y1 + subdivisionGap;
+                group.deceasedNode.y1 = group.deceasedNode.y0 + deceasedHeight;
+                
+                console.log(`🔍 GROUPING: ${groupId} subdivisions: living=${livingHeight.toFixed(1)}px, deceased=${deceasedHeight.toFixed(1)}px, gap=${subdivisionGap}px`);
             }
         });
     }
@@ -400,39 +497,144 @@ class SankeyRTL {
     }
 
     /**
-     * Render Sankey nodes with subdivisions
+     * Render Sankey nodes with visual grouping for Step 2
      */
-    renderNodes(data) {
-        const nodes = this.svg.selectAll('.sankey-node')
-            .data(data.nodes)
+    renderNodes(data, visualGroups) {
+        console.log(`🔍 GROUPING: Starting node rendering with ${visualGroups ? visualGroups.size : 0} visual groups`);
+        
+        // Render Step 1 nodes (individual, no grouping)
+        const step1Nodes = data.nodes.filter(n => n.step === 1);
+        const step1Selection = this.svg.selectAll('.sankey-node-step1')
+            .data(step1Nodes)
             .enter()
             .append('g')
-            .attr('class', 'sankey-node');
+            .attr('class', 'sankey-node sankey-node-step1');
         
-        // Render nodes differently based on whether they have subdivisions
-        nodes.each((d, i) => {
-            const nodeGroup = d3.select(nodes.nodes()[i]);
-            
-            if (d.subdivisions && d.step === 2) {
-                this.renderSubdividedNode(nodeGroup, d);
-            } else {
-                this.renderSimpleNode(nodeGroup, d);
-            }
+        step1Selection.each((d, i) => {
+            const nodeGroup = d3.select(step1Selection.nodes()[i]);
+            console.log(`🔍 GROUPING: Rendering Step 1 node ${d.id} at x=${d.x0}-${d.x1}, y=${d.y0}-${d.y1}`);
+            this.renderSimpleNode(nodeGroup, d);
         });
         
-        // Node labels (RTL positioning)
-        nodes.append('text')
-            .attr('x', d => {
-                if (d.step === 1) return d.x0 - 6;      // Step 1 (rightmost): label to the right of node
-                if (d.step === 2) return d.x1 + 6;      // Step 2 (leftmost): label to the left of node  
-                return d.x1 + 6;
-            })
+        // Add Step 1 labels
+        step1Selection.append('text')
+            .attr('x', d => d.x0 - 6)  // RTL: label to the right
             .attr('y', d => (d.y1 + d.y0) / 2)
             .attr('dy', '0.35em')
-            .style('text-anchor', d => d.step === 1 ? 'end' : 'start')
+            .style('text-anchor', 'end')
             .style('font-size', '12px')
             .style('fill', '#2c3e50')
             .text(d => d.name);
+        
+        // Render Step 2 nodes as grouped visual elements
+        if (visualGroups) {
+            this.renderGroupedNodes(data, visualGroups);
+        } else {
+            // Fallback to individual rendering if no groups
+            const step2Nodes = data.nodes.filter(n => n.step === 2);
+            const step2Selection = this.svg.selectAll('.sankey-node-step2')
+                .data(step2Nodes)
+                .enter()
+                .append('g')
+                .attr('class', 'sankey-node sankey-node-step2');
+            
+            step2Selection.each((d, i) => {
+                const nodeGroup = d3.select(step2Selection.nodes()[i]);
+                this.renderSimpleNode(nodeGroup, d);
+            });
+        }
+    }
+    
+    /**
+     * Render grouped nodes as unified visual elements
+     */
+    renderGroupedNodes(data, groups) {
+        console.log(`🔍 GROUPING: Rendering ${groups.size} visual groups`);
+        
+        groups.forEach(group => {
+            const groupElement = this.svg.append('g')
+                .attr('class', `sankey-group group-${group.id}`)
+                .attr('data-group-id', group.id);
+            
+            console.log(`🔍 GROUPING: Rendering group ${group.id} with ${group.nodes.length} nodes`);
+            
+            // Render background rectangle for entire group
+            groupElement.append('rect')
+                .attr('class', 'group-background')
+                .attr('x', group.x0 - 2)
+                .attr('y', group.y0)
+                .attr('width', group.x1 - group.x0 + 4)
+                .attr('height', group.y1 - group.y0)
+                .style('fill', 'transparent')
+                .style('stroke', '#ddd')
+                .style('stroke-width', 1)
+                .style('stroke-dasharray', '2,2');
+            
+            // Render living subdivision
+            if (group.livingNode) {
+                this.renderSubdivision(groupElement, group.livingNode, 'living');
+            }
+            
+            // Render deceased subdivision
+            if (group.deceasedNode) {
+                this.renderSubdivision(groupElement, group.deceasedNode, 'deceased');
+            }
+            
+            // Add group label
+            groupElement.append('text')
+                .attr('class', 'group-label')
+                .attr('x', group.x1 + 10) // RTL: label to the left
+                .attr('y', (group.y0 + group.y1) / 2)
+                .attr('dy', '0.35em')
+                .style('text-anchor', 'start')
+                .style('font-weight', 'bold')
+                .style('font-size', '14px')
+                .style('fill', '#2c3e50')
+                .text(this.getGroupLabel(group.id));
+        });
+    }
+    
+    /**
+     * Render individual subdivision within a group
+     */
+    renderSubdivision(groupElement, node, type) {
+        console.log(`🔍 GROUPING: Rendering ${type} subdivision for ${node.id} at y=${node.y0}-${node.y1}`);
+        
+        const rect = groupElement.append('rect')
+            .attr('class', `subdivision subdivision-${type}`)
+            .attr('x', node.x0)
+            .attr('y', node.y0)
+            .attr('width', node.x1 - node.x0)
+            .attr('height', node.y1 - node.y0)
+            .style('fill', type === 'living' ? node.color || '#3498db' : '#95a5a6')
+            .style('stroke', '#2c3e50')
+            .style('stroke-width', 1);
+        
+        // Add count label if space permits
+        if (node.y1 - node.y0 > 20) {
+            groupElement.append('text')
+                .attr('class', 'subdivision-label')
+                .attr('x', (node.x0 + node.x1) / 2)
+                .attr('y', (node.y0 + node.y1) / 2)
+                .attr('dy', '0.35em')
+                .style('text-anchor', 'middle')
+                .style('fill', 'white')
+                .style('font-size', '11px')
+                .style('font-weight', 'bold')
+                .text(node.value);
+        }
+    }
+    
+    /**
+     * Get display label for group
+     */
+    getGroupLabel(groupId) {
+        const labels = {
+            'released-deal': 'שוחררו בעסקה',
+            'released-military': 'שוחררו במבצע',
+            'still-held': 'עדיין בשבי'
+        };
+        return labels[groupId] || groupId;
     }
     
     /**
