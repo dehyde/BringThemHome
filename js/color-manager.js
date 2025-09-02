@@ -128,10 +128,9 @@ class ColorManager {
     /**
      * Get color configuration for a hostage based on their state and history
      * @param {Object} hostage - Hostage record
-     * @param {Object} pathSegment - Current path segment (optional)
      * @returns {Object} Color configuration object
      */
-    getHostageColorConfig(hostage, pathSegment = null) {
+    getHostageColorConfig(hostage) {
         const config = {
             type: 'solid', // 'solid' or 'gradient'
             color: this.config.baseColors.living,
@@ -144,30 +143,34 @@ class ColorManager {
         const finalState = this.determineHostageState(hostage);
         const hasTransition = hostage.path && hostage.path.length > 1;
         
-        // Apply color logic based on rules
+        // If there's a transition, calculate precise transition points
+        if (hasTransition) {
+            const transitionPoint = this.calculateTransitionPoint(hostage);
+            if (transitionPoint) {
+                return this.createPreciseGradientConfig(hostage, transitionPoint);
+            }
+        }
+        
+        // Fallback to static gradients for cases without precise transition data
         if (finalState === 'deceased') {
             if (this.config.rules.deceasedWithLivingHistory && hasTransition) {
-                // Check if they were living before death
                 const wasLiving = this.wasHostageLivingBeforeDeath(hostage);
                 if (wasLiving) {
                     config.type = 'gradient';
                     config.gradientId = 'living-to-deceased';
                     config.opacity = this.config.opacity.deceased;
                 } else {
-                    // Kidnapped dead - start with dark red, transition to gray
                     config.type = 'gradient';
                     config.gradientId = 'kidnapped-dead-to-deceased';
                     config.opacity = this.config.opacity.deceased;
                 }
             } else {
-                // Simple deceased coloring
                 config.color = this.config.baseColors.deceasedReturned;
                 config.opacity = this.config.opacity.deceased;
             }
         } else if (finalState === 'released') {
             const releaseMethod = this.determineReleaseMethod(hostage);
             if (hasTransition) {
-                // Gradient from living to release color
                 if (releaseMethod === 'deal') {
                     config.type = 'gradient';
                     config.gradientId = 'living-to-released-deal';
@@ -178,7 +181,6 @@ class ColorManager {
                     config.opacity = this.config.opacity.normal;
                 }
             } else {
-                // No transition, use solid color
                 if (releaseMethod === 'deal') {
                     config.color = this.config.baseColors.releasedDeal;
                 } else if (releaseMethod === 'military') {
@@ -186,7 +188,6 @@ class ColorManager {
                 }
             }
         } else {
-            // Living in captivity
             config.color = this.config.baseColors.living;
             config.opacity = this.config.opacity.normal;
         }
@@ -246,6 +247,118 @@ class ColorManager {
     }
     
     /**
+     * Calculate the precise transition point for a hostage
+     * @param {Object} hostage - Hostage record
+     * @returns {Object|null} Transition point with position and states
+     */
+    calculateTransitionPoint(hostage) {
+        if (!hostage.path || hostage.path.length < 2) {
+            return null;
+        }
+        
+        // Find the first point where the lane changes (transition occurs)
+        for (let i = 0; i < hostage.path.length - 1; i++) {
+            const currentPoint = hostage.path[i];
+            const nextPoint = hostage.path[i + 1];
+            
+            if (currentPoint.lane !== nextPoint.lane) {
+                // Calculate the position where transition occurs
+                const transitionDate = nextPoint.date;
+                const transitionX = this.timeline.dateToX(transitionDate);
+                
+                return {
+                    position: transitionX, // X coordinate where transition occurs
+                    date: transitionDate,
+                    fromLane: currentPoint.lane,
+                    toLane: nextPoint.lane,
+                    fromState: this.laneToState(currentPoint.lane),
+                    toState: this.laneToState(nextPoint.lane)
+                };
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Convert lane name to state name
+     * @param {string} lane - Lane name
+     * @returns {string} State name
+     */
+    laneToState(lane) {
+        if (lane.includes('deceased')) return 'deceased';
+        if (lane.includes('released')) {
+            if (lane.includes('military')) return 'released-military';
+            return 'released-deal';
+        }
+        if (lane.includes('living')) return 'living';
+        return 'living'; // default
+    }
+    
+    /**
+     * Create precise gradient configuration based on calculated transition point
+     * @param {Object} hostage - Hostage record
+     * @param {Object} transitionPoint - Calculated transition point
+     * @returns {Object} Color configuration object
+     */
+    createPreciseGradientConfig(hostage, transitionPoint) {
+        const finalState = this.determineHostageState(hostage);
+        const gradientId = `precise-${hostage['Hebrew Name'].replace(/\s+/g, '-')}-${Date.now()}`;
+        
+        // Calculate timeline bounds for percentage calculation
+        const timelineStart = this.timeline.dateToX(new Date('2023-10-07')); // Start of timeline
+        const timelineEnd = this.timeline.dateToX(new Date()); // Current date
+        const timelineWidth = timelineEnd - timelineStart;
+        
+        // Calculate transition position as percentage (RTL: invert the calculation)
+        // In RTL: position 0 is at the right, position timelineWidth is at the left
+        const rtlTransitionPosition = timelineWidth - (transitionPoint.position - timelineStart);
+        const transitionPercent = rtlTransitionPosition / timelineWidth;
+        
+        // Create transition zone around the actual transition point
+        const transitionStartPercent = Math.max(0, transitionPercent - (this.config.gradient.transitionDuration / timelineWidth));
+        const transitionEndPercent = Math.min(1, transitionPercent + (this.config.gradient.transitionEnd / timelineWidth));
+        
+        // Determine colors based on final state
+        let beforeColor, afterColor, opacity;
+        
+        if (finalState === 'released') {
+            const releaseMethod = this.determineReleaseMethod(hostage);
+            beforeColor = this.config.baseColors.living; // Mustard
+            afterColor = releaseMethod === 'military' ? 
+                this.config.baseColors.releasedMilitary : 
+                this.config.baseColors.releasedDeal;
+            opacity = this.config.opacity.normal;
+        } else if (finalState === 'deceased') {
+            const wasLiving = this.wasHostageLivingBeforeDeath(hostage);
+            if (wasLiving) {
+                beforeColor = this.config.baseColors.living; // Mustard
+                afterColor = this.config.baseColors.deceased; // Gray
+            } else {
+                beforeColor = this.config.baseColors.kidnappedDead; // Dark red
+                afterColor = this.config.baseColors.deceased; // Gray
+            }
+            opacity = this.config.opacity.deceased;
+        } else {
+            // Living - no transition needed
+            return {
+                type: 'solid',
+                color: this.config.baseColors.living,
+                opacity: this.config.opacity.normal
+            };
+        }
+        
+        // Create gradient with precise positioning
+        this.createGradientDefinition(gradientId, beforeColor, afterColor, transitionStartPercent, transitionEndPercent);
+        
+        return {
+            type: 'gradient',
+            gradientId: gradientId,
+            opacity: opacity
+        };
+    }
+
+    /**
      * Generate dynamic gradient for complex transitions
      * @param {Object} hostage - Hostage record
      * @param {Array} pathSegments - Array of path segments
@@ -277,31 +390,7 @@ class ColorManager {
         return gradientId;
     }
     
-    /**
-     * Create a precise transition gradient based on actual transition points
-     * @param {Object} hostage - Hostage record
-     * @param {Object} transitionPoint - The specific transition point
-     * @param {number} totalLength - Total path length in pixels
-     * @returns {string} Gradient ID
-     */
-    createPreciseTransitionGradient(hostage, transitionPoint, totalLength) {
-        const gradientId = `precise-${hostage['Hebrew Name'].replace(/\s+/g, '-')}-${Date.now()}`;
-        
-        // Calculate transition zone in percentage (RTL: invert the calculation)
-        // In RTL: position 0 is at the right, position totalLength is at the left
-        const rtlPosition = totalLength - transitionPoint.position;
-        const transitionStartPercent = Math.max(0, (rtlPosition - this.config.gradient.transitionDuration) / totalLength);
-        const transitionEndPercent = Math.min(1, (rtlPosition + this.config.gradient.transitionEnd) / totalLength);
-        
-        // Get colors for before and after transition
-        const beforeColor = this.getStateColor(transitionPoint.fromState);
-        const afterColor = this.getStateColor(transitionPoint.toState);
-        
-        // Create gradient with precise positioning
-        this.createGradientDefinition(gradientId, beforeColor, afterColor, transitionStartPercent, transitionEndPercent);
-        
-        return gradientId;
-    }
+
     
     /**
      * Calculate gradient stops for complex transitions
