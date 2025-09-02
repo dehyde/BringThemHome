@@ -37,6 +37,7 @@ class HostageTimelineApp {
         this.laneManager = null;
         this.transitionEngine = null;
         this.interactionManager = null;
+        this.colorManager = null;
         
         // UI elements using centralized config
         this.elements = {
@@ -255,6 +256,11 @@ class HostageTimelineApp {
             this.interactionManager = new InteractionManager(this.timelineCore, this.laneManager);
             this.interactionManager.initialize();
             
+            // Initialize color manager
+            this.colorManager = new ColorManager(this.timelineCore, this.laneManager);
+            this.colorManager.initialize();
+            console.log('Color manager initialized');
+            
             // TODO: Pass EventBus and StateManager to components once they support it
             // For now, components will be gradually updated in the next steps
             
@@ -330,7 +336,7 @@ class HostageTimelineApp {
     }
 
     /**
-     * Render hostage lines using advanced transition engine (Phase 3 implementation)
+     * Render hostage lines using advanced transition engine and color manager
      */
     renderHostageLines() {
         const layerGroups = this.timelineCore.getLayerGroups();
@@ -351,11 +357,57 @@ class HostageTimelineApp {
             .attr('class', d => `hostage-line ${d.hostage.finalLane}`)
             .attr('data-name', d => d.hostage['Hebrew Name'])
             .attr('d', d => d.path)
-            .style('stroke', d => d.hostage.laneDef.color)
             .style('stroke-width', 1.5)
             .style('fill', 'none')
             .style('stroke-linecap', 'round')
             .style('stroke-linejoin', 'round');
+        
+        // Apply gradients using color manager
+        lines.each(function(d) {
+            const pathElement = d3.select(this);
+            const pathString = d.path;
+            const hostage = d.hostage;
+            
+            // Apply gradient coloring
+            if (window.app.colorManager) {
+                try {
+                    // Create gradient first
+                    const gradientId = window.app.colorManager.createGradientForHostage(hostage, pathString);
+                    
+                    if (gradientId) {
+                        // Apply gradient immediately with explicit style setting
+                        pathElement
+                            .style('stroke', `url(#${gradientId})`)
+                            .style('fill', 'none')
+                            .attr('data-gradient-id', gradientId);
+                        
+                        // Verify the stroke was applied
+                        const actualStroke = pathElement.style('stroke');
+                        if (actualStroke && actualStroke.includes('url(')) {
+                            console.log(`[COLOR-DEBUG] Applied gradient ${gradientId} to ${hostage['Hebrew Name']}`);
+                        } else {
+                            // Fallback if gradient didn't apply
+                            const fallbackColor = window.app.colorManager.getFallbackColor(hostage);
+                            pathElement.style('stroke', fallbackColor);
+                            console.warn(`[COLOR-DEBUG] Gradient failed to apply to ${hostage['Hebrew Name']}, using fallback: ${fallbackColor}`);
+                        }
+                    } else {
+                        // Fallback to solid color
+                        const fallbackColor = window.app.colorManager.getFallbackColor(hostage);
+                        pathElement.style('stroke', fallbackColor);
+                        console.log(`[COLOR-DEBUG] No gradient created for ${hostage['Hebrew Name']}, using fallback: ${fallbackColor}`);
+                    }
+                } catch (error) {
+                    console.error(`[COLOR-DEBUG] Error applying gradient to ${hostage['Hebrew Name']}:`, error);
+                    const fallbackColor = window.app.colorManager.getFallbackColor(hostage);
+                    pathElement.style('stroke', fallbackColor);
+                }
+            } else {
+                // Fallback to original solid color
+                const fallbackColor = hostage.laneDef?.color || '#666666';
+                pathElement.style('stroke', fallbackColor);
+            }
+        });
         
         // Add hover effects using interaction manager
         lines.on('mouseenter', (event, d) => {
@@ -369,6 +421,29 @@ class HostageTimelineApp {
         
         // Log transition statistics
         console.log('Transition statistics:', this.transitionEngine.getTransitionStats(sortedData));
+        
+        // Debug: Log color analysis for a few hostages
+        if (this.colorManager && sortedData.length > 0) {
+            // Log first hostage with death transition
+            const diedInCaptivity = sortedData.find(h => h.path?.some(p => p.event === 'died'));
+            if (diedInCaptivity) {
+                const path = optimizedPaths.find(p => p.hostage === diedInCaptivity);
+                if (path) {
+                    console.log('[COLOR-DEBUG] Example died in captivity:');
+                    this.colorManager.debugGradient(diedInCaptivity, path.path);
+                }
+            }
+            
+            // Log first released hostage
+            const released = sortedData.find(h => h.path?.some(p => p.event === 'released'));
+            if (released) {
+                const path = optimizedPaths.find(p => p.hostage === released);
+                if (path) {
+                    console.log('[COLOR-DEBUG] Example released:');
+                    this.colorManager.debugGradient(released, path.path);
+                }
+            }
+        }
     }
 
     // generateHostagePath method removed - now handled by TransitionEngine
@@ -387,6 +462,11 @@ class HostageTimelineApp {
             
             if (this.timelineCore) {
                 this.timelineCore.resize();
+                
+                // Clear color manager cache before re-rendering
+                if (this.colorManager) {
+                    this.colorManager.clearCache();
+                }
                 
                 // Re-render if we have data in state
                 const data = this.stateManager.getState('data');
