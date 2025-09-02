@@ -29,7 +29,8 @@ class ColorManager {
             // Gradient settings
             gradient: {
                 enabled: true,
-                transitionDuration: 200, // pixels before transition point to start gradient
+                transitionDuration: 50, // pixels before transition point to start gradient
+                transitionEnd: 50, // pixels after transition point to end gradient
                 smoothness: 0.8 // 0-1, how smooth the gradient transition is
             },
             
@@ -73,13 +74,14 @@ class ColorManager {
         }
         
         // Create gradient definitions for common transitions
-        // Note: Gradients go from start (left) to end (right) of the timeline
-        this.createGradientDefinition('living-to-death', this.config.baseColors.living, this.config.baseColors.transitionDeath);
-        this.createGradientDefinition('living-to-deceased', this.config.baseColors.living, this.config.baseColors.deceased);
-        this.createGradientDefinition('death-to-deceased', this.config.baseColors.transitionDeath, this.config.baseColors.deceased);
-        this.createGradientDefinition('living-to-released-deal', this.config.baseColors.living, this.config.baseColors.releasedDeal);
-        this.createGradientDefinition('living-to-released-military', this.config.baseColors.living, this.config.baseColors.releasedMilitary);
-        this.createGradientDefinition('kidnapped-dead-to-deceased', this.config.baseColors.kidnappedDead, this.config.baseColors.deceased);
+        // Note: Gradients go from start (right) to end (left) of the timeline
+        // Transition zones are focused at the end (left) where state changes occur
+        this.createGradientDefinition('living-to-death', this.config.baseColors.living, this.config.baseColors.transitionDeath, 0.85, 1.0);
+        this.createGradientDefinition('living-to-deceased', this.config.baseColors.living, this.config.baseColors.deceased, 0.85, 1.0);
+        this.createGradientDefinition('death-to-deceased', this.config.baseColors.transitionDeath, this.config.baseColors.deceased, 0.85, 1.0);
+        this.createGradientDefinition('living-to-released-deal', this.config.baseColors.living, this.config.baseColors.releasedDeal, 0.85, 1.0);
+        this.createGradientDefinition('living-to-released-military', this.config.baseColors.living, this.config.baseColors.releasedMilitary, 0.85, 1.0);
+        this.createGradientDefinition('kidnapped-dead-to-deceased', this.config.baseColors.kidnappedDead, this.config.baseColors.deceased, 0.85, 1.0);
     }
     
     /**
@@ -88,7 +90,7 @@ class ColorManager {
      * @param {string} startColor - Starting color
      * @param {string} endColor - Ending color
      */
-    createGradientDefinition(id, startColor, endColor) {
+    createGradientDefinition(id, startColor, endColor, transitionStart = 0.8, transitionEnd = 1.0) {
         const defs = this.timeline.svg.select('defs');
         
         // Remove existing gradient if it exists
@@ -102,10 +104,21 @@ class ColorManager {
             .attr('y2', '0%')
             .attr('gradientUnits', 'objectBoundingBox');
             
+        // Start with solid color until transition point
         gradient.append('stop')
             .attr('offset', '0%')
             .attr('stop-color', startColor);
             
+        gradient.append('stop')
+            .attr('offset', `${transitionStart * 100}%`)
+            .attr('stop-color', startColor);
+            
+        // Transition zone
+        gradient.append('stop')
+            .attr('offset', `${transitionEnd * 100}%`)
+            .attr('stop-color', endColor);
+            
+        // End with solid color
         gradient.append('stop')
             .attr('offset', '100%')
             .attr('stop-color', endColor);
@@ -259,6 +272,30 @@ class ColorManager {
         
         // Create gradient definition
         this.createDynamicGradientDefinition(gradientId, stops);
+        
+        return gradientId;
+    }
+    
+    /**
+     * Create a precise transition gradient based on actual transition points
+     * @param {Object} hostage - Hostage record
+     * @param {Object} transitionPoint - The specific transition point
+     * @param {number} totalLength - Total path length in pixels
+     * @returns {string} Gradient ID
+     */
+    createPreciseTransitionGradient(hostage, transitionPoint, totalLength) {
+        const gradientId = `precise-${hostage['Hebrew Name'].replace(/\s+/g, '-')}-${Date.now()}`;
+        
+        // Calculate transition zone in percentage
+        const transitionStartPercent = Math.max(0, (transitionPoint.position - this.config.gradient.transitionDuration) / totalLength);
+        const transitionEndPercent = Math.min(1, (transitionPoint.position + this.config.gradient.transitionEnd) / totalLength);
+        
+        // Get colors for before and after transition
+        const beforeColor = this.getStateColor(transitionPoint.fromState);
+        const afterColor = this.getStateColor(transitionPoint.toState);
+        
+        // Create gradient with precise positioning
+        this.createGradientDefinition(gradientId, beforeColor, afterColor, transitionStartPercent, transitionEndPercent);
         
         return gradientId;
     }
