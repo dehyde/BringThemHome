@@ -75,13 +75,13 @@ class ColorManager {
         
         // Create gradient definitions for common transitions
         // Note: Gradients go from start (right) to end (left) of the timeline
-        // Transition zones are focused at the end (left) where state changes occur
-        // In RTL: 0.85 means 15% from the left (where transitions happen)
+        // For death transitions: short transition zone at the end
+        // For release transitions: longer transition zone since released is the final state
         this.createGradientDefinition('living-to-death', this.config.baseColors.living, this.config.baseColors.transitionDeath, 0.85, 1.0);
         this.createGradientDefinition('living-to-deceased', this.config.baseColors.living, this.config.baseColors.deceased, 0.85, 1.0);
         this.createGradientDefinition('death-to-deceased', this.config.baseColors.transitionDeath, this.config.baseColors.deceased, 0.85, 1.0);
-        this.createGradientDefinition('living-to-released-deal', this.config.baseColors.living, this.config.baseColors.releasedDeal, 0.85, 1.0);
-        this.createGradientDefinition('living-to-released-military', this.config.baseColors.living, this.config.baseColors.releasedMilitary, 0.85, 1.0);
+        this.createGradientDefinition('living-to-released-deal', this.config.baseColors.living, this.config.baseColors.releasedDeal, 0.4, 1.0);
+        this.createGradientDefinition('living-to-released-military', this.config.baseColors.living, this.config.baseColors.releasedMilitary, 0.4, 1.0);
         this.createGradientDefinition('kidnapped-dead-to-deceased', this.config.baseColors.kidnappedDead, this.config.baseColors.deceased, 0.85, 1.0);
     }
     
