@@ -73,6 +73,7 @@ class ColorManager {
         }
         
         // Create gradient definitions for common transitions
+        // Note: Gradients go from start (left) to end (right) of the timeline
         this.createGradientDefinition('living-to-death', this.config.baseColors.living, this.config.baseColors.transitionDeath);
         this.createGradientDefinition('living-to-deceased', this.config.baseColors.living, this.config.baseColors.deceased);
         this.createGradientDefinition('death-to-deceased', this.config.baseColors.transitionDeath, this.config.baseColors.deceased);
@@ -95,10 +96,11 @@ class ColorManager {
         
         const gradient = defs.append('linearGradient')
             .attr('id', id)
-            .attr('x1', '0%')
+            .attr('x1', '100%')
             .attr('y1', '0%')
-            .attr('x2', '100%')
-            .attr('y2', '0%');
+            .attr('x2', '0%')
+            .attr('y2', '0%')
+            .attr('gradientUnits', 'objectBoundingBox');
             
         gradient.append('stop')
             .attr('offset', '0%')
@@ -360,10 +362,11 @@ class ColorManager {
         
         const gradient = defs.append('linearGradient')
             .attr('id', id)
-            .attr('x1', '0%')
+            .attr('x1', '100%')
             .attr('y1', '0%')
-            .attr('x2', '100%')
-            .attr('y2', '0%');
+            .attr('x2', '0%')
+            .attr('y2', '0%')
+            .attr('gradientUnits', 'objectBoundingBox');
             
         stops.forEach(stop => {
             gradient.append('stop')
