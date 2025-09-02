@@ -76,6 +76,7 @@ class ColorManager {
         // Create gradient definitions for common transitions
         // Note: Gradients go from start (right) to end (left) of the timeline
         // Transition zones are focused at the end (left) where state changes occur
+        // In RTL: 0.85 means 15% from the left (where transitions happen)
         this.createGradientDefinition('living-to-death', this.config.baseColors.living, this.config.baseColors.transitionDeath, 0.85, 1.0);
         this.createGradientDefinition('living-to-deceased', this.config.baseColors.living, this.config.baseColors.deceased, 0.85, 1.0);
         this.createGradientDefinition('death-to-deceased', this.config.baseColors.transitionDeath, this.config.baseColors.deceased, 0.85, 1.0);
@@ -286,9 +287,11 @@ class ColorManager {
     createPreciseTransitionGradient(hostage, transitionPoint, totalLength) {
         const gradientId = `precise-${hostage['Hebrew Name'].replace(/\s+/g, '-')}-${Date.now()}`;
         
-        // Calculate transition zone in percentage
-        const transitionStartPercent = Math.max(0, (transitionPoint.position - this.config.gradient.transitionDuration) / totalLength);
-        const transitionEndPercent = Math.min(1, (transitionPoint.position + this.config.gradient.transitionEnd) / totalLength);
+        // Calculate transition zone in percentage (RTL: invert the calculation)
+        // In RTL: position 0 is at the right, position totalLength is at the left
+        const rtlPosition = totalLength - transitionPoint.position;
+        const transitionStartPercent = Math.max(0, (rtlPosition - this.config.gradient.transitionDuration) / totalLength);
+        const transitionEndPercent = Math.min(1, (rtlPosition + this.config.gradient.transitionEnd) / totalLength);
         
         // Get colors for before and after transition
         const beforeColor = this.getStateColor(transitionPoint.fromState);
