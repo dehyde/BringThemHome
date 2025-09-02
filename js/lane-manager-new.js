@@ -133,14 +133,16 @@ class LaneManager {
             return this.sortWithinKidnappedLivingLane(a, b);
         }
         
-        // For released lanes (both living and deceased), sort by release/return date
-        if (a.laneId.startsWith('released-')) {
-            return this.sortReleasedHostages(a, b);
+        // For deceased hostages (any lane with 'deceased'), use deceased sorting
+        if (a.laneId.includes('deceased')) {
+            console.log(`[DECEASED_DEBUG] Using sortDeceasedHostages for ${a['Hebrew Name']} and ${b['Hebrew Name']} in lane ${a.laneId}`);
+            return this.sortDeceasedHostages(a, b);
         }
         
-        // For kidnapped-deceased lane, sort by death date (latest death first)
-        if (a.laneId === 'kidnapped-deceased') {
-            return this.sortDeceasedHostages(a, b);
+        // For living released hostages, sort by release date
+        if (a.laneId.startsWith('released-')) {
+            console.log(`[DECEASED_DEBUG] Using sortReleasedHostages for ${a['Hebrew Name']} and ${b['Hebrew Name']} in lane ${a.laneId}`);
+            return this.sortReleasedHostages(a, b);
         }
         
         // Fallback: sort by event order then name
@@ -200,54 +202,90 @@ class LaneManager {
                                       hostage.laneId === 'kidnapped-deceased';
             
             // DEBUG: Show available data for deceased hostages  
-            if (hostage['Hebrew Name']?.includes('עדן') || hostage['Hebrew Name']?.includes('איתי')) {
-                console.log(`[EDEN_DEBUG] Deceased data for ${hostage['Hebrew Name']}:`, {
-                    status: hostage['Current Status'],
-                    laneId: hostage.laneId,
-                    stillInCaptivity: isStillInCaptivity,
-                    path: hostage.path?.map(p => `${p.lane}@${p.date instanceof Date ? p.date.toISOString().split('T')[0] : p.date}`),
-                    releaseDate: hostage.releaseDate instanceof Date ? hostage.releaseDate.toISOString().split('T')[0] : hostage.releaseDate,
-                    deathDate: hostage.deathDate instanceof Date ? hostage.deathDate.toISOString().split('T')[0] : hostage.deathDate
-                });
+            if (hostage['Hebrew Name'] === 'יונתן סמרנו') {
+                console.log(`[DECEASED_DEBUG] Raw data for ${hostage['Hebrew Name']}:`);
+                console.log('  Current Status:', hostage['Current Status']);
+                console.log('  Lane ID:', hostage.laneId);
+                console.log('  Still in captivity?', isStillInCaptivity);
+                console.log('  releaseDate:', hostage.releaseDate, 'Type:', typeof hostage.releaseDate);
+                console.log('  releaseDate_valid:', hostage.releaseDate_valid);
+                console.log('  deathDate:', hostage.deathDate, 'Type:', typeof hostage.deathDate);
+                console.log('  deathDate_valid:', hostage.deathDate_valid);
+                console.log('  kidnappedDate:', hostage.kidnappedDate, 'Type:', typeof hostage.kidnappedDate);
+                console.log('  kidnappedDate_valid:', hostage.kidnappedDate_valid);
+                console.log('  path length:', hostage.path?.length || 0);
+                if (hostage.path && hostage.path.length > 0) {
+                    console.log('  path details:', hostage.path.map((p, i) => `${i}: ${p.lane}@${p.date} (${typeof p.date})`));
+                }
             }
             
             // If still in captivity (body not returned), sort to bottom
             if (isStillInCaptivity) {
+                const deathDate = hostage.deathDate ? (hostage.deathDate instanceof Date ? hostage.deathDate : new Date(hostage.deathDate)) : null;
+                const kidnappedDate = hostage.kidnappedDate ? (hostage.kidnappedDate instanceof Date ? hostage.kidnappedDate : new Date(hostage.kidnappedDate)) : null;
+                
                 return {
                     priority: 2, // Bottom priority
-                    date: hostage.deathDate instanceof Date ? hostage.deathDate.getTime() : 
-                          (hostage.kidnappedDate instanceof Date ? hostage.kidnappedDate.getTime() : new Date('2023-10-07').getTime())
+                    date: (deathDate && !isNaN(deathDate.getTime())) ? deathDate.getTime() : 
+                          ((kidnappedDate && !isNaN(kidnappedDate.getTime())) ? kidnappedDate.getTime() : new Date('2023-10-07').getTime())
                 };
             }
             
             // For returned bodies, find the very first transition/event date
             let firstTransitionDate = null;
             
-            // Check path for the very first transition (any transition, not just to deceased)
-            if (hostage.path && Array.isArray(hostage.path) && hostage.path.length > 0) {
-                // Sort path by date to find the earliest transition
-                const sortedPath = hostage.path
-                    .filter(p => p.date instanceof Date)
-                    .sort((a, b) => a.date.getTime() - b.date.getTime());
-                
-                if (sortedPath.length > 0) {
-                    firstTransitionDate = sortedPath[0].date;
+            // Helper function to try parsing various date formats
+            const tryParseDate = (dateValue) => {
+                if (!dateValue) return null;
+                if (dateValue instanceof Date && !isNaN(dateValue.getTime())) return dateValue;
+                if (typeof dateValue === 'string') {
+                    // Try parsing as ISO date
+                    const parsed = new Date(dateValue);
+                    if (!isNaN(parsed.getTime())) return parsed;
+                }
+                return null;
+            };
+            
+            // Priority 1: Check for body release date (most important for returned bodies)
+            if (!firstTransitionDate && hostage.releaseDate) {
+                if (hostage['Hebrew Name'] === 'יונתן סמרנו') {
+                    console.log(`[DECEASED_DEBUG] BEFORE parsing releaseDate for ${hostage['Hebrew Name']}: "${hostage.releaseDate}" (type: ${typeof hostage.releaseDate})`);
+                }
+                firstTransitionDate = tryParseDate(hostage.releaseDate);
+                if (hostage['Hebrew Name'] === 'יונתן סמרנו') {
+                    console.log(`[DECEASED_DEBUG] AFTER parsing releaseDate for ${hostage['Hebrew Name']}: ${firstTransitionDate ? firstTransitionDate.toISOString().split('T')[0] : 'NULL'}`);
                 }
             }
             
-            // If no path transitions found, check for body release date
-            if (!firstTransitionDate && hostage.releaseDate_valid && hostage.releaseDate instanceof Date) {
-                firstTransitionDate = hostage.releaseDate;
+            // Priority 2: Check path for transitions (fallback)
+            if (!firstTransitionDate && hostage.path && Array.isArray(hostage.path) && hostage.path.length > 0) {
+                const sortedPath = hostage.path
+                    .map(p => ({ ...p, parsedDate: tryParseDate(p.date) }))
+                    .filter(p => p.parsedDate !== null)
+                    .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
+                
+                if (sortedPath.length > 0) {
+                    firstTransitionDate = sortedPath[0].parsedDate;
+                    if (hostage['Hebrew Name'] === 'יונתן סמרנו') {
+                        console.log(`[DECEASED_DEBUG] Found path date for ${hostage['Hebrew Name']}: ${firstTransitionDate.toISOString().split('T')[0]}`);
+                    }
+                }
             }
             
-            // If no release date, check death date
-            if (!firstTransitionDate && hostage.deathDate_valid && hostage.deathDate instanceof Date) {
-                firstTransitionDate = hostage.deathDate;
+            // Priority 3: Check death date (if no release date available)
+            if (!firstTransitionDate && hostage.deathDate) {
+                firstTransitionDate = tryParseDate(hostage.deathDate);
+                if (firstTransitionDate && hostage['Hebrew Name'] === 'יונתן סמרנו') {
+                    console.log(`[DECEASED_DEBUG] Found death date for ${hostage['Hebrew Name']}: ${firstTransitionDate.toISOString().split('T')[0]}`);
+                }
             }
             
-            // Fallback to kidnapping date
-            if (!firstTransitionDate && hostage.kidnappedDate_valid && hostage.kidnappedDate instanceof Date) {
-                firstTransitionDate = hostage.kidnappedDate;
+            // Priority 4: Fallback to kidnapping date
+            if (!firstTransitionDate && hostage.kidnappedDate) {
+                firstTransitionDate = tryParseDate(hostage.kidnappedDate);
+                if (firstTransitionDate && hostage['Hebrew Name'] === 'יונתן סמרנו') {
+                    console.log(`[DECEASED_DEBUG] Using kidnapped date for ${hostage['Hebrew Name']}: ${firstTransitionDate.toISOString().split('T')[0]}`);
+                }
             }
             
             // Final fallback to Oct 7
@@ -264,6 +302,7 @@ class LaneManager {
         const dataA = getSortingData(a);
         const dataB = getSortingData(b);
         
+        console.log(`[DECEASED_DEBUG] Deceased sorting: ${a['Hebrew Name']} (priority=${dataA.priority}, ${new Date(dataA.date).toISOString().split('T')[0]}) vs ${b['Hebrew Name']} (priority=${dataB.priority}, ${new Date(dataB.date).toISOString().split('T')[0]})`);
         console.log(`[EDEN_DEBUG] Deceased sorting: ${a['Hebrew Name']} (priority=${dataA.priority}, ${new Date(dataA.date).toISOString().split('T')[0]}) vs ${b['Hebrew Name']} (priority=${dataB.priority}, ${new Date(dataB.date).toISOString().split('T')[0]})`);
         
         // First sort by priority (returned bodies first, then still in captivity)
@@ -484,11 +523,13 @@ class LaneManager {
                     console.log(`[EDEN_DEBUG] Position in kidnapped-living lane: ${edenIndex} out of ${laneSortedHostages.length}`);
                     console.log(`[EDEN_DEBUG] Hostages around her:`, laneSortedHostages.slice(Math.max(0, edenIndex-2), edenIndex+3).map(h => h['Hebrew Name']));
                 }
-            } else if (laneId === 'kidnapped-deceased') {
-                // Use deceased sorting for kidnapped-deceased lane
+            } else if (laneId.includes('deceased')) {
+                // Use deceased sorting for any deceased lane
+                console.log(`[DECEASED_DEBUG] Lane assignment - Using deceased sorting for lane: ${laneId} with ${hostagesInThisLane.length} hostages`);
                 laneSortedHostages = hostagesInThisLane.sort((a, b) => this.sortDeceasedHostages(a, b));
             } else if (laneId.startsWith('released-')) {
-                // Use release sorting for all released lanes
+                // Use release sorting for living released lanes only
+                console.log(`[DECEASED_DEBUG] Lane assignment - Using release sorting for lane: ${laneId} with ${hostagesInThisLane.length} hostages`);
                 laneSortedHostages = hostagesInThisLane.sort((a, b) => this.sortReleasedHostages(a, b));
             } else {
                 // Fallback: use the existing sorted order

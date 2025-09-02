@@ -250,8 +250,9 @@ class HostageTimelineApp {
             console.log('[EDEN_DEBUG] LaneManager created:', typeof this.laneManager);
             console.log('[EDEN_DEBUG] LaneManager has processData method:', typeof this.laneManager.processData);
             
-            // Initialize transition engine and interaction manager
+            // Initialize transition engine, color manager, and interaction manager
             this.transitionEngine = new TransitionEngine(this.timelineCore, this.laneManager);
+            this.colorManager = new ColorManager(this.timelineCore);
             this.interactionManager = new InteractionManager(this.timelineCore, this.laneManager);
             this.interactionManager.initialize();
             
@@ -342,7 +343,7 @@ class HostageTimelineApp {
         // Generate optimized paths using transition engine
         const optimizedPaths = this.transitionEngine.generateOptimizedPaths(sortedData);
         
-        // Render lines for each hostage
+        // Render lines for each hostage with advanced coloring
         const lines = layerGroups.lines
             .selectAll('.hostage-line')
             .data(optimizedPaths)
@@ -351,11 +352,35 @@ class HostageTimelineApp {
             .attr('class', d => `hostage-line ${d.hostage.finalLane}`)
             .attr('data-name', d => d.hostage['Hebrew Name'])
             .attr('d', d => d.path)
-            .style('stroke', d => d.hostage.laneDef.color)
             .style('stroke-width', 1.5)
             .style('fill', 'none')
             .style('stroke-linecap', 'round')
             .style('stroke-linejoin', 'round');
+        
+        // Apply advanced coloring using color manager
+        const app = this;
+        lines.each(function(d) {
+            try {
+                const colorConfig = app.colorManager.getHostageColorConfig(d.hostage);
+                console.log('Applying color config for', d.hostage['Hebrew Name'], ':', colorConfig);
+                
+                // Apply colors directly to the current element
+                const element = d3.select(this);
+                if (colorConfig.type === 'gradient') {
+                    element
+                        .style('stroke', `url(#${colorConfig.gradientId})`)
+                        .style('stroke-opacity', colorConfig.opacity);
+                } else {
+                    element
+                        .style('stroke', colorConfig.color)
+                        .style('stroke-opacity', colorConfig.opacity);
+                }
+            } catch (error) {
+                console.error('Error applying color to', d.hostage['Hebrew Name'], ':', error);
+                // Fallback to original color
+                d3.select(this).style('stroke', d.hostage.laneDef.color);
+            }
+        });
         
         // Add hover effects using interaction manager
         lines.on('mouseenter', (event, d) => {

@@ -38,7 +38,8 @@
       "Bash(cp:*)",
       "WebFetch(domain:api.plotly.com)",
       "WebFetch(domain:chart-studio.plotly.com)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
