@@ -1,9 +1,18 @@
-/*
-!.gitignore
-!hostage-timeline-viz/
-!hostage-timeline-viz-refactored/
-!hostage-sankey-viz/
-hostage-timeline-viz/debug/node_modules/
+# Allow root files and directories
+!js/
+!css/
+!data/
+!docs/
+!index.html
+!*.md
+!*.txt
+
+# Ignore patterns
 node_modules/
 *.log
 .DS_Store
+.claude/
+
+# Ignore specific directories
+archive/
+temp_archive/
