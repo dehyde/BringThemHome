@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - נתיבי גורל החטופים</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            direction: ltr; 
+            text-align: left;
+        }
+        .debug-section { 
+            border: 1px solid #ccc; 
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 5px;
+        }
+        .success { background: #e8f5e8; border-color: #4caf50; }
+        .error { background: #ffeaea; border-color: #f44336; }
+        .warning { background: #fff3cd; border-color: #ffc107; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Preview - Hostage Timeline</h1>
+    
+    <div id="step1" class="debug-section">
+        <h3>Step 1: Checking File Access</h3>
+        <div id="step1-result">Testing...</div>
+    </div>
+    
+    <div id="step2" class="debug-section">
+        <h3>Step 2: CSV Data Loading</h3>
+        <div id="step2-result">Waiting for Step 1...</div>
+    </div>
+    
+    <div id="step3" class="debug-section">
+        <h3>Step 3: JavaScript Dependencies</h3>
+        <div id="step3-result">Waiting...</div>
+    </div>
+    
+    <div id="data-preview" class="debug-section" style="display: none;">
+        <h3>Data Preview</h3>
+        <pre id="data-content"></pre>
+    </div>
+
+    <script>
+        console.log('🚀 Debug script starting...');
+        
+        // Step 1: Check basic file access
+        document.getElementById('step1-result').innerHTML = '✅ JavaScript is running';
+        document.getElementById('step1').className = 'debug-section success';
+        
+        // Step 2: Test CSV loading
+        fetch('data/hostages-from-kan.csv')
+            .then(response => {
+                console.log('📡 Fetch response:', response);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.text();
+            })
+            .then(csvData => {
+                console.log('📊 CSV data loaded, length:', csvData.length);
+                
+                const lines = csvData.split('\n');
+                const step2Result = `✅ CSV loaded successfully!<br>
+                    📝 Total lines: ${lines.length}<br>
+                    📊 Data size: ${(csvData.length / 1024).toFixed(1)} KB<br>
+                    🏷️ Headers: ${lines[0] ? lines[0].split(',').length : 0} columns`;
+                
+                document.getElementById('step2-result').innerHTML = step2Result;
+                document.getElementById('step2').className = 'debug-section success';
+                
+                // Show data preview
+                document.getElementById('data-preview').style.display = 'block';
+                document.getElementById('data-content').textContent = lines.slice(0, 5).join('\n') + '\n...(showing first 5 lines)';
+                
+                // Step 3: Test JavaScript modules
+                testJavaScriptModules();
+                
+            })
+            .catch(error => {
+                console.error('❌ CSV loading error:', error);
+                const errorMsg = `❌ Failed to load CSV data<br>
+                    <strong>Error:</strong> ${error.message}<br><br>
+                    <strong>Possible causes:</strong><br>
+                    • File not found (check path)<br>
+                    • CORS policy (need web server)<br>
+                    • File permissions<br><br>
+                    <strong>Solutions:</strong><br>
+                    • Use <code>python -m http.server 8000</code><br>
+                    • Or use VS Code Live Server extension<br>
+                    • Or open via http://localhost:8000`;
+                
+                document.getElementById('step2-result').innerHTML = errorMsg;
+                document.getElementById('step2').className = 'debug-section error';
+            });
+        
+        function testJavaScriptModules() {
+            try {
+                // Check if main JS files are accessible
+                const scripts = [
+                    'js/data-processor.js',
+                    'js/timeline-core.js', 
+                    'js/lane-manager.js',
+                    'js/transition-engine.js',
+                    'js/interaction.js',
+                    'js/main.js'
+                ];
+                
+                document.getElementById('step3-result').innerHTML = 
+                    `✅ Ready to test modules<br>📁 Expected files: ${scripts.length}`;
+                document.getElementById('step3').className = 'debug-section success';
+                
+            } catch (error) {
+                document.getElementById('step3-result').innerHTML = 
+                    `❌ Module test failed: ${error.message}`;
+                document.getElementById('step3').className = 'debug-section error';
+            }
+        }
+        
+        // Log any errors
+        window.addEventListener('error', (event) => {
+            console.error('🚨 Global error:', event.error);
+        });
+    </script>
+</body>
+</html>

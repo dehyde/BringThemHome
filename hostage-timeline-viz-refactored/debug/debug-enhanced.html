@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hostage Timeline Debug Enhanced</title>
+    
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../css/styles.css">
+    
+    <style>
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 400px;
+            max-height: 600px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            z-index: 1000;
+            font-family: monospace;
+            font-size: 12px;
+            direction: ltr;
+            text-align: left;
+        }
+        
+        .debug-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+        }
+        
+        .debug-section h4 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .debug-output {
+            background: #f1f3f4;
+            padding: 8px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .error { color: #dc3545; }
+        .warning { color: #fd7e14; }
+        .success { color: #28a745; }
+        .info { color: #0066cc; }
+        
+        #visualization-container {
+            margin-left: 420px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Debug Panel -->
+    <div class="debug-panel">
+        <h3>Debug Information</h3>
+        
+        <div class="debug-section">
+            <h4>Console Logs</h4>
+            <div id="debug-console" class="debug-output"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h4>Data Processing</h4>
+            <div id="debug-data" class="debug-output"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h4>Lane Information</h4>
+            <div id="debug-lanes" class="debug-output"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h4>SVG Elements</h4>
+            <div id="debug-svg" class="debug-output"></div>
+        </div>
+        
+        <div class="debug-section">
+            <h4>Errors</h4>
+            <div id="debug-errors" class="debug-output"></div>
+        </div>
+        
+        <button onclick="window.debugApp.analyzeVisualization()">Analyze Visualization</button>
+        <button onclick="window.debugApp.exportDebugData()">Export Debug Data</button>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">נתיבי גורל החטופים - Debug Mode</h1>
+            <p class="subtitle">Enhanced debugging visualization</p>
+            <div class="urgent-banner">
+                <div id="live-count">טוען נתונים...</div>
+            </div>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            טוען נתונים ומעבד קובץ CSV...
+        </div>
+
+        <!-- Main Visualization -->
+        <div id="visualization-container" style="display: none;">            
+            <div id="main-timeline" class="timeline-wrapper">
+                <!-- SVG will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced JavaScript Modules with Debug Wrapper -->
+    <script>
+        // Enhanced debug logging
+        window.debugData = {
+            logs: [],
+            errors: [],
+            dataProcessing: {},
+            laneInfo: {},
+            svgElements: {}
+        };
+
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        console.log = function(...args) {
+            window.debugData.logs.push({type: 'log', message: args.join(' '), timestamp: new Date()});
+            originalLog.apply(console, args);
+            updateDebugPanel();
+        };
+
+        console.warn = function(...args) {
+            window.debugData.logs.push({type: 'warning', message: args.join(' '), timestamp: new Date()});
+            originalWarn.apply(console, args);
+            updateDebugPanel();
+        };
+
+        console.error = function(...args) {
+            window.debugData.errors.push({message: args.join(' '), timestamp: new Date()});
+            originalError.apply(console, args);
+            updateDebugPanel();
+        };
+
+        function updateDebugPanel() {
+            // Update console logs
+            const consoleDiv = document.getElementById('debug-console');
+            if (consoleDiv) {
+                const recentLogs = window.debugData.logs.slice(-10);
+                consoleDiv.innerHTML = recentLogs.map(log => 
+                    `<div class="${log.type}">[${log.timestamp.toLocaleTimeString()}] ${log.message}</div>`
+                ).join('');
+            }
+
+            // Update errors
+            const errorsDiv = document.getElementById('debug-errors');
+            if (errorsDiv) {
+                errorsDiv.innerHTML = window.debugData.errors.map(err => 
+                    `<div class="error">[${err.timestamp.toLocaleTimeString()}] ${err.message}</div>`
+                ).join('');
+            }
+        }
+
+        // Debug app functionality
+        window.debugApp = {
+            analyzeVisualization: function() {
+                console.log('=== VISUALIZATION ANALYSIS ===');
+                
+                // Check SVG elements
+                const svg = document.querySelector('.timeline-svg');
+                if (!svg) {
+                    console.error('SVG element not found!');
+                    return;
+                }
+                
+                const lines = svg.querySelectorAll('.hostage-line');
+                console.log(`Found ${lines.length} hostage lines in DOM`);
+                
+                // Analyze each line
+                lines.forEach((line, index) => {
+                    const pathData = line.getAttribute('d');
+                    const stroke = line.style.stroke;
+                    const strokeWidth = line.style.strokeWidth;
+                    
+                    console.log(`Line ${index}:`, {
+                        pathLength: pathData ? pathData.length : 0,
+                        pathData: pathData ? pathData.substring(0, 50) + '...' : 'EMPTY',
+                        stroke,
+                        strokeWidth,
+                        visible: pathData && pathData.length > 0
+                    });
+                });
+                
+                // Check lane boundaries
+                const lanes = svg.querySelectorAll('.debug-lane-boundary');
+                console.log(`Found ${lanes.length} debug lane boundaries`);
+                
+                // Update debug panel
+                document.getElementById('debug-svg').innerHTML = `
+                    SVG Element: ${svg ? 'Found' : 'Not Found'}<br>
+                    Hostage Lines: ${lines.length}<br>
+                    Lane Boundaries: ${lanes.length}<br>
+                    SVG Dimensions: ${svg ? `${svg.getAttribute('width')}x${svg.getAttribute('height')}` : 'N/A'}
+                `;
+            },
+            
+            exportDebugData: function() {
+                const data = {
+                    timestamp: new Date().toISOString(),
+                    logs: window.debugData.logs,
+                    errors: window.debugData.errors,
+                    dataProcessing: window.debugData.dataProcessing,
+                    laneInfo: window.debugData.laneInfo,
+                    svgElements: window.debugData.svgElements,
+                    domAnalysis: this.getDOMAnalysis()
+                };
+                
+                // Create downloadable JSON
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `hostage-timeline-debug-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                console.log('Debug data exported');
+            },
+            
+            getDOMAnalysis: function() {
+                const svg = document.querySelector('.timeline-svg');
+                const lines = document.querySelectorAll('.hostage-line');
+                const lanes = document.querySelectorAll('.debug-lane-boundary');
+                
+                return {
+                    svg: {
+                        exists: !!svg,
+                        width: svg?.getAttribute('width'),
+                        height: svg?.getAttribute('height'),
+                        childCount: svg?.children.length
+                    },
+                    hostageLines: {
+                        count: lines.length,
+                        withPaths: Array.from(lines).filter(l => l.getAttribute('d')).length,
+                        emptyPaths: Array.from(lines).filter(l => !l.getAttribute('d') || l.getAttribute('d').length === 0).length
+                    },
+                    lanes: {
+                        debugBoundaries: lanes.length
+                    }
+                };
+            }
+        };
+
+        // Catch global errors
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error?.message || e.message);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+        });
+    </script>
+    
+    <!-- Load original modules -->
+    <script src="../js/data-processor.js"></script>
+    <script src="../js/timeline-core.js"></script>
+    <script src="../js/lane-manager.js"></script>
+    <script src="../js/transition-engine.js"></script>
+    <script src="../js/interaction.js"></script>
+    <script src="../js/main.js"></script>
+    
+    <!-- Enhanced main with debugging -->
+    <script>
+        // Enhanced HostageTimelineApp with debugging
+        class DebugHostageTimelineApp extends HostageTimelineApp {
+            async loadData() {
+                console.log('=== DEBUG: Starting data load ===');
+                try {
+                    await super.loadData();
+                    window.debugData.dataProcessing.recordCount = this.data.length;
+                    window.debugData.dataProcessing.dataPreview = this.data.slice(0, 3);
+                    console.log(`=== DEBUG: Data loaded successfully: ${this.data.length} records ===`);
+                    
+                    // Update debug panel
+                    document.getElementById('debug-data').innerHTML = `
+                        Records loaded: ${this.data.length}<br>
+                        Processing errors: ${this.dataProcessor.getErrors().length}<br>
+                        First record: ${JSON.stringify(this.data[0], null, 2).substring(0, 200)}...
+                    `;
+                } catch (error) {
+                    console.error('=== DEBUG: Data load failed ===', error);
+                    throw error;
+                }
+            }
+            
+            processData() {
+                console.log('=== DEBUG: Starting data processing ===');
+                try {
+                    const result = super.processData();
+                    
+                    // Debug lane information
+                    const lanes = this.laneManager.getLanes();
+                    window.debugData.laneInfo = {};
+                    lanes.forEach((lane, laneId) => {
+                        window.debugData.laneInfo[laneId] = {
+                            count: lane.count,
+                            height: lane.height,
+                            yStart: lane.yStart,
+                            yEnd: lane.yEnd
+                        };
+                    });
+                    
+                    // Update debug panel
+                    const laneDebugText = Array.from(lanes.entries()).map(([id, lane]) => 
+                        `${id}: ${lane.count} hostages, ${lane.height}px height, Y: ${lane.yStart}-${lane.yEnd}`
+                    ).join('\n');
+                    
+                    document.getElementById('debug-lanes').innerHTML = laneDebugText;
+                    
+                    console.log(`=== DEBUG: Data processing complete. Lanes: ${lanes.size} ===`);
+                    return result;
+                } catch (error) {
+                    console.error('=== DEBUG: Data processing failed ===', error);
+                    throw error;
+                }
+            }
+            
+            renderHostageLines() {
+                console.log('=== DEBUG: Starting hostage line rendering ===');
+                try {
+                    super.renderHostageLines();
+                    
+                    // Analyze rendered lines
+                    setTimeout(() => {
+                        window.debugApp.analyzeVisualization();
+                    }, 100);
+                    
+                    console.log('=== DEBUG: Hostage line rendering complete ===');
+                } catch (error) {
+                    console.error('=== DEBUG: Hostage line rendering failed ===', error);
+                    throw error;
+                }
+            }
+        }
+
+        // Initialize enhanced debug app
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== DEBUG: DOM loaded, initializing debug application ===');
+            
+            window.app = new DebugHostageTimelineApp();
+            window.app.initialize().catch(error => {
+                console.error('=== DEBUG: Failed to initialize application ===', error);
+            });
+        });
+    </script>
+</body>
+</html>

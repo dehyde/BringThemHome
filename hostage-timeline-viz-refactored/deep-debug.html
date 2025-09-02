@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Debug - Positioning Issues</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .debug-panel { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ddd; }
+        .lane-debug { margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; }
+        .lane-debug.has-hostages { border-color: #22c55e; }
+        .lane-debug.empty { border-color: #ef4444; }
+        .hostage-position { margin: 5px 0; padding: 5px; background: #f9f9f9; font-size: 11px; }
+        .position-error { background: #fee; color: #c00; }
+        pre { background: #f8f8f8; padding: 10px; overflow: auto; max-height: 300px; font-size: 11px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 11px; }
+        th { background: #f5f5f5; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Deep Debug - Positioning Analysis</h1>
+    
+    <div class="debug-panel">
+        <button onclick="runDeepDebug()">Run Deep Debug</button>
+        <button onclick="showRawData()">Show Raw Data</button>
+        <div id="debug-results"></div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="js/data-processor.js"></script>
+    <script src="js/timeline-core.js"></script>
+    <script src="js/lane-manager.js"></script>
+    
+    <script>
+        let globalData = null;
+
+        async function runDeepDebug() {
+            const resultsDiv = document.getElementById('debug-results');
+            try {
+                resultsDiv.innerHTML = '<div style="color: blue;">Running deep debug analysis...</div>';
+                
+                // Load and process data
+                const response = await fetch('data/hostages-from-kan.csv');
+                const csvText = await response.text();
+                const dataProcessor = new DataProcessor();
+                const processedData = dataProcessor.process(csvText);
+                globalData = processedData;
+                
+                // Initialize components
+                const timeline = new TimelineCore('debug-results'); // Dummy container
+                timeline.initialize();
+                timeline.updateTimeline(processedData);
+                
+                const laneManager = new LaneManager(timeline);
+                const sortedData = laneManager.processData(processedData);
+                
+                // Analyze the issues
+                let html = '<h2>Deep Debug Analysis</h2>';
+                
+                // 1. Lane assignment analysis
+                html += '<h3>1. Lane Assignments</h3>';
+                const laneStats = {};
+                sortedData.forEach(hostage => {
+                    const lane = hostage.finalLane;
+                    if (!laneStats[lane]) laneStats[lane] = [];
+                    laneStats[lane].push(hostage);
+                });
+                
+                html += '<table>';
+                html += '<tr><th>Lane ID</th><th>Count</th><th>Calculated Height</th><th>Should Have Height</th><th>Y Start</th><th>Y End</th></tr>';
+                
+                let totalCalculatedHeight = 0;
+                laneManager.lanes.forEach(lane => {
+                    const shouldHaveHeight = calculateExpectedHeight(lane.count, laneManager.config);
+                    const heightMatch = Math.abs(lane.height - shouldHaveHeight) < 1;
+                    
+                    html += `<tr style="background: ${heightMatch ? '#efe' : '#fee'}">`;
+                    html += `<td>${lane.id}</td>`;
+                    html += `<td>${lane.count}</td>`;
+                    html += `<td>${lane.height}px</td>`;
+                    html += `<td>${shouldHaveHeight}px</td>`;
+                    html += `<td>${lane.yStart}px</td>`;
+                    html += `<td>${lane.yEnd}px</td>`;
+                    html += '</tr>';
+                    
+                    totalCalculatedHeight += lane.height;
+                });
+                html += '</table>';
+                
+                // 2. Individual hostage positioning analysis
+                html += '<h3>2. Hostage Positioning Analysis</h3>';
+                html += '<p>Checking if hostages are positioned within their lane boundaries...</p>';
+                
+                let positionErrors = 0;
+                laneManager.lanes.forEach(lane => {
+                    if (lane.count === 0) return;
+                    
+                    html += `<div class="lane-debug has-hostages">`;
+                    html += `<h4>${lane.definition.label} (${lane.count} hostages)</h4>`;
+                    html += `<p>Lane bounds: ${lane.yStart}px to ${lane.yEnd}px (height: ${lane.height}px)</p>`;
+                    
+                    const hostages = lane.hostages.slice(0, 10); // Show first 10
+                    hostages.forEach((hostage, index) => {
+                        const calculatedY = laneManager.getHostageY(hostage);
+                        const expectedY = lane.yStart + laneManager.config.lanePadding + 
+                                        (hostage.lanePosition * (laneManager.config.lineWidth + laneManager.config.lineSpacing));
+                        
+                        const withinBounds = calculatedY >= lane.yStart && calculatedY <= lane.yEnd;
+                        const yMatches = Math.abs(calculatedY - expectedY) < 1;
+                        
+                        if (!withinBounds || !yMatches) positionErrors++;
+                        
+                        const errorClass = (!withinBounds || !yMatches) ? 'position-error' : '';
+                        html += `<div class="hostage-position ${errorClass}">`;
+                        html += `${index}. ${hostage['Hebrew Name']} (pos: ${hostage.lanePosition})`;
+                        html += ` → Y: ${calculatedY}px (expected: ${expectedY}px)`;
+                        html += ` ${withinBounds ? '✓' : '✗bounds'} ${yMatches ? '✓' : '✗calc'}`;
+                        html += '</div>';
+                    });
+                    
+                    if (lane.count > 10) {
+                        html += `<div style="font-style: italic;">... and ${lane.count - 10} more</div>`;
+                    }
+                    
+                    html += '</div>';
+                });
+                
+                // 3. Empty lanes analysis
+                html += '<h3>3. Empty Lanes Analysis</h3>';
+                let emptyLaneHeight = 0;
+                laneManager.lanes.forEach(lane => {
+                    if (lane.count === 0) {
+                        emptyLaneHeight += lane.height;
+                        html += `<div class="lane-debug empty">`;
+                        html += `<h4>${lane.definition.label} - EMPTY (taking ${lane.height}px)</h4>`;
+                        html += '</div>';
+                    }
+                });
+                
+                // 4. Summary
+                html += '<h3>4. Summary</h3>';
+                html += `<ul>`;
+                html += `<li>Total lanes: ${laneManager.lanes.size}</li>`;
+                html += `<li>Empty lane wasted space: ${emptyLaneHeight}px</li>`;
+                html += `<li>Position calculation errors: ${positionErrors}</li>`;
+                html += `<li>Total calculated height: ${laneManager.totalHeight}px</li>`;
+                html += `<li>Sum of lane heights: ${totalCalculatedHeight}px</li>`;
+                html += `</ul>`;
+                
+                // 5. Configuration check
+                html += '<h3>5. Configuration</h3>';
+                html += `<pre>${JSON.stringify(laneManager.config, null, 2)}</pre>`;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="color: red;">Error: ${error.message}</div><pre>${error.stack}</pre>`;
+            }
+        }
+
+        function calculateExpectedHeight(hostageCount, config) {
+            if (hostageCount === 0) return 20; // Minimum
+            return (hostageCount - 1) * (config.lineWidth + config.lineSpacing) + config.lineWidth + (2 * config.lanePadding);
+        }
+
+        async function showRawData() {
+            if (!globalData) {
+                await runDeepDebug();
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('debug-results');
+            
+            // Show first 10 records with their lane assignments
+            let html = '<h2>Raw Data Sample</h2>';
+            html += '<table>';
+            html += '<tr><th>Name</th><th>Status</th><th>Release Circumstances</th><th>Final Lane</th></tr>';
+            
+            globalData.slice(0, 20).forEach(hostage => {
+                html += '<tr>';
+                html += `<td>${hostage['Hebrew Name']}</td>`;
+                html += `<td>${hostage['Current Status']}</td>`;
+                html += `<td>${hostage['Release/Death Circumstances'] || 'N/A'}</td>`;
+                html += `<td>${hostage.finalLane}</td>`;
+                html += '</tr>';
+            });
+            html += '</table>';
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // Auto-run
+        window.addEventListener('load', () => {
+            setTimeout(runDeepDebug, 500);
+        });
+    </script>
+</body>
+</html>

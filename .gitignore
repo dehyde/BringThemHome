@@ -1,6 +1,7 @@
 /*
 !.gitignore
 !hostage-timeline-viz/
+!hostage-timeline-viz-refactored/
 !hostage-sankey-viz/
 hostage-timeline-viz/debug/node_modules/
 node_modules/
