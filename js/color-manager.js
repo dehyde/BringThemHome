@@ -234,12 +234,22 @@ class ColorManager {
      */
     determineReleaseMethod(hostage) {
         const circumstances = (hostage['Release/Death Circumstances'] || '').toLowerCase();
+        const currentStatus = (hostage['Current Status'] || '').toLowerCase();
         
-        if (circumstances.includes('military') || circumstances.includes('operation') || 
-            circumstances.includes('rescue') || circumstances.includes('מבצע')) {
+        // Check both circumstances and current status
+        const fullText = `${circumstances} ${currentStatus}`;
+        
+        if (fullText.includes('military') || fullText.includes('operation') || 
+            fullText.includes('rescue') || fullText.includes('מבצע')) {
             return 'military';
-        } else if (circumstances.includes('deal') || circumstances.includes('exchange') || 
-                   circumstances.includes('עסקה') || circumstances.includes('שחרור')) {
+        } else if (fullText.includes('deal') || fullText.includes('exchange') || 
+                   fullText.includes('עסקה') || fullText.includes('שחרור') ||
+                   fullText.includes('released')) {
+            return 'deal';
+        }
+        
+        // Default to deal for released hostages if no specific method is found
+        if (currentStatus.includes('released')) {
             return 'deal';
         }
         
@@ -303,23 +313,9 @@ class ColorManager {
      */
     createPreciseGradientConfig(hostage, transitionPoint) {
         const finalState = this.determineHostageState(hostage);
-        const gradientId = `precise-${hostage['Hebrew Name'].replace(/\s+/g, '-')}-${Date.now()}`;
         
-        // Calculate timeline bounds for percentage calculation
-        const timelineStart = this.timeline.dateToX(new Date('2023-10-07')); // Start of timeline
-        const timelineEnd = this.timeline.dateToX(new Date()); // Current date
-        const timelineWidth = timelineEnd - timelineStart;
-        
-        // Calculate transition position as percentage (RTL: invert the calculation)
-        // In RTL: position 0 is at the right, position timelineWidth is at the left
-        const rtlTransitionPosition = timelineWidth - (transitionPoint.position - timelineStart);
-        const transitionPercent = rtlTransitionPosition / timelineWidth;
-        
-        // Create transition zone around the actual transition point
-        const transitionStartPercent = Math.max(0, transitionPercent - (this.config.gradient.transitionDuration / timelineWidth));
-        const transitionEndPercent = Math.min(1, transitionPercent + (this.config.gradient.transitionEnd / timelineWidth));
-        
-        // Determine colors based on final state
+        // Use static gradient IDs for consistency instead of unique ones
+        let gradientId;
         let beforeColor, afterColor, opacity;
         
         if (finalState === 'released') {
@@ -329,14 +325,19 @@ class ColorManager {
                 this.config.baseColors.releasedMilitary : 
                 this.config.baseColors.releasedDeal;
             opacity = this.config.opacity.normal;
+            
+            // Use static gradient IDs
+            gradientId = releaseMethod === 'military' ? 'living-to-released-military' : 'living-to-released-deal';
         } else if (finalState === 'deceased') {
             const wasLiving = this.wasHostageLivingBeforeDeath(hostage);
             if (wasLiving) {
                 beforeColor = this.config.baseColors.living; // Mustard
                 afterColor = this.config.baseColors.deceased; // Gray
+                gradientId = 'living-to-deceased';
             } else {
                 beforeColor = this.config.baseColors.kidnappedDead; // Dark red
                 afterColor = this.config.baseColors.deceased; // Gray
+                gradientId = 'kidnapped-dead-to-deceased';
             }
             opacity = this.config.opacity.deceased;
         } else {
@@ -348,9 +349,8 @@ class ColorManager {
             };
         }
         
-        // Create gradient with precise positioning
-        this.createGradientDefinition(gradientId, beforeColor, afterColor, transitionStartPercent, transitionEndPercent);
-        
+        // For now, use the static gradients that are already defined
+        // The precise positioning will be handled by the gradient definition itself
         return {
             type: 'gradient',
             gradientId: gradientId,
