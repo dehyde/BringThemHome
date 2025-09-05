@@ -550,14 +550,18 @@ class ColorManager {
         const deathCorner = analysis.corners[0];
         
         if (deathCorner) {
-            // Living color until after first corner
+            // Living color until corner starts
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
             stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.livingInCaptivity });
             
-            // Gradient during transition: living → dark red → gray
-            const midPoint = (deathCorner.startPercent + deathCorner.endPercent) / 2;
-            stops.push({ offset: `${midPoint}%`, color: this.colors.darkRed });
-            stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.deadInCaptivity });
+            // Red color ONLY during the vertical transition line
+            const verticalStart = deathCorner.startPercent;
+            const verticalEnd = deathCorner.endPercent;
+            
+            // The vertical line should be red
+            stops.push({ offset: `${verticalStart}%`, color: this.colors.livingInCaptivity });
+            stops.push({ offset: `${(verticalStart + verticalEnd) / 2}%`, color: this.colors.darkRed });
+            stops.push({ offset: `${verticalEnd}%`, color: this.colors.deadInCaptivity });
             
             // Check for release (body return)
             if (analysis.corners.length > 1 && hostage.releaseDate) {
@@ -593,23 +597,22 @@ class ColorManager {
         const stops = [];
         const releaseColor = this.getReleaseColor(hostage);
         
-        // Find release corner (should be last corner)
-        const releaseCorner = analysis.corners[analysis.corners.length - 1];
+        // Find the FIRST corner (which is the release transition)
+        const releaseCorner = analysis.corners[0]; // First corner, not last
         
         if (releaseCorner) {
-            // Living color until release corner starts
+            // Living color until corner starts
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
             stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.livingInCaptivity });
             
-            // Gradient during corner
+            // Gradient ONLY during the corner
             stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
             
             // Continue with release color for rest of line
             stops.push({ offset: '100%', color: releaseColor });
         } else {
-            // Fallback - gradient across entire line
+            // Fallback if no corner found
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
-            stops.push({ offset: '50%', color: releaseColor });
             stops.push({ offset: '100%', color: releaseColor });
         }
         
@@ -693,7 +696,7 @@ class ColorManager {
                 { offset: '100%', color: this.colors.deadInCaptivity }
             ];
         } else {
-            // Still alive in captivity
+            // Still alive in captivity - ensure visible stroke
             return [
                 { offset: '0%', color: this.colors.livingInCaptivity },
                 { offset: '100%', color: this.colors.livingInCaptivity }
@@ -775,6 +778,14 @@ class ColorManager {
                 const fallbackColor = this.getFallbackColor(hostage);
                 pathElement.style('stroke', fallbackColor);
                 console.log(`[COLOR-DEBUG] Applied fallback color ${fallbackColor} to ${hostage['Hebrew Name']}`);
+            }
+            
+            // Ensure stroke is always visible - never set to none
+            const currentStroke = pathElement.style('stroke');
+            if (!currentStroke || currentStroke === 'none') {
+                const fallbackColor = this.getFallbackColor(hostage);
+                pathElement.style('stroke', fallbackColor);
+                console.warn(`[COLOR-DEBUG] Stroke was none for ${hostage['Hebrew Name']}, applied fallback: ${fallbackColor}`);
             }
         } catch (error) {
             console.error(`[COLOR-DEBUG] Error applying gradient to ${hostage['Hebrew Name']}:`, error);

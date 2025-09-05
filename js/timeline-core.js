@@ -309,11 +309,14 @@ class TimelineCore {
      * Add background grid for better readability
      */
     addBackgroundGrid() {
+        // Clear any existing grid lines
+        this.layerGroups.background.selectAll('.background-grid').remove();
+        
         const gridGroup = this.layerGroups.background
             .append('g')
             .attr('class', 'background-grid');
         
-        // Vertical grid lines (monthly)
+        // Vertical grid lines (monthly) - positioned at the very back
         const months = this.scales.x.ticks(d3.timeMonth);
         
         gridGroup.selectAll('.grid-line-vertical')
@@ -326,7 +329,8 @@ class TimelineCore {
             .attr('y1', 0)
             .attr('y2', this.dimensions.height - this.config.axisHeight)
             .style('stroke', AppConfig.colors.grid.main)
-            .style('stroke-width', 1);
+            .style('stroke-width', 1)
+            .style('opacity', 0.5); // Make them more subtle
     }
 
     /**

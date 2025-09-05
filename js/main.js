@@ -368,44 +368,14 @@ class HostageTimelineApp {
             const pathString = d.path;
             const hostage = d.hostage;
             
-            // Apply gradient coloring
-            if (window.app.colorManager) {
-                try {
-                    // Create gradient first
-                    const gradientId = window.app.colorManager.createGradientForHostage(hostage, pathString);
-                    
-                    if (gradientId) {
-                        // Apply gradient immediately with explicit style setting
-                        pathElement
-                            .style('stroke', `url(#${gradientId})`)
-                            .style('fill', 'none')
-                            .attr('data-gradient-id', gradientId);
-                        
-                        // Verify the stroke was applied
-                        const actualStroke = pathElement.style('stroke');
-                        if (actualStroke && actualStroke.includes('url(')) {
-                            console.log(`[COLOR-DEBUG] Applied gradient ${gradientId} to ${hostage['Hebrew Name']}`);
-                        } else {
-                            // Fallback if gradient didn't apply
-                            const fallbackColor = window.app.colorManager.getFallbackColor(hostage);
-                            pathElement.style('stroke', fallbackColor);
-                            console.warn(`[COLOR-DEBUG] Gradient failed to apply to ${hostage['Hebrew Name']}, using fallback: ${fallbackColor}`);
-                        }
-                    } else {
-                        // Fallback to solid color
-                        const fallbackColor = window.app.colorManager.getFallbackColor(hostage);
-                        pathElement.style('stroke', fallbackColor);
-                        console.log(`[COLOR-DEBUG] No gradient created for ${hostage['Hebrew Name']}, using fallback: ${fallbackColor}`);
-                    }
-                } catch (error) {
-                    console.error(`[COLOR-DEBUG] Error applying gradient to ${hostage['Hebrew Name']}:`, error);
-                    const fallbackColor = window.app.colorManager.getFallbackColor(hostage);
-                    pathElement.style('stroke', fallbackColor);
-                }
+            // Ensure color manager exists and is initialized
+            if (window.app.colorManager && window.app.colorManager.defsElement) {
+                window.app.colorManager.applyGradientToPath(pathElement, hostage, pathString);
             } else {
-                // Fallback to original solid color
+                // Fallback to solid color
                 const fallbackColor = hostage.laneDef?.color || '#666666';
                 pathElement.style('stroke', fallbackColor);
+                console.warn('[COLOR-DEBUG] Color manager not ready, using fallback');
             }
         });
         

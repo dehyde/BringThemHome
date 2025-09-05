@@ -914,23 +914,9 @@ class LaneManager {
         // Remove existing debug elements
         layerGroups.background.selectAll('.debug-lane-boundary').remove();
         
-        // Draw lane boundaries for debugging
+        // Draw lane boundaries for debugging (removed dashed rectangles)
         this.lanes.forEach(lane => {
-            // Lane boundary rectangle
-            layerGroups.background
-                .append('rect')
-                .attr('class', 'debug-lane-boundary')
-                .attr('x', 0)
-                .attr('y', lane.yStart)
-                .attr('width', dimensions.width)
-                .attr('height', lane.height)
-                .style('fill', 'none')
-                .style('stroke', lane.definition.color)
-                .style('stroke-width', 2)
-                .style('stroke-dasharray', '5,5')
-                .style('opacity', 0.3);
-            
-            // Lane label for debugging
+            // Lane label for debugging (keeping labels but removing rectangles)
             layerGroups.background
                 .append('text')
                 .attr('class', 'debug-lane-boundary')
@@ -942,7 +928,7 @@ class LaneManager {
                 .text(`${lane.definition.label} (${lane.count}) [${lane.yStart}-${lane.yEnd}]`);
         });
         
-        console.log('Debug lane boundaries rendered');
+        console.log('Debug lane boundaries rendered (rectangles removed)');
     }
 
     /**
