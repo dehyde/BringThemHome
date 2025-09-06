@@ -606,8 +606,8 @@ class ColorManager {
     createDiedInCaptivityGradient(analysis, hostage) {
         const stops = [];
         
-        // Find death transition corner (should be first corner)
-        const deathCorner = analysis.corners[0];
+        // Find death transition corner using intelligent selection
+        const deathCorner = this.findReleaseTransitionCorner(analysis, hostage);
         
         if (deathCorner) {
             // Living color until corner starts
@@ -662,8 +662,8 @@ class ColorManager {
         const stops = [];
         const releaseColor = this.getReleaseColor(hostage);
         
-        // Find the FIRST corner (which is the release transition)
-        const releaseCorner = analysis.corners[0]; // First corner, not last
+        // Find the appropriate corner for the release transition
+        const releaseCorner = this.findReleaseTransitionCorner(analysis, hostage);
         
         if (releaseCorner) {
             // Living color until corner starts
@@ -691,6 +691,42 @@ class ColorManager {
     }
 
     /**
+     * Find the corner that represents the release transition
+     * Different hostage groups have transitions at different corners
+     * @param {Object} analysis - Path analysis
+     * @param {Object} hostage - Hostage data
+     * @returns {Object|null} The corner representing the release transition
+     */
+    findReleaseTransitionCorner(analysis, hostage) {
+        if (!analysis.corners || analysis.corners.length === 0) {
+            return null;
+        }
+        
+        // For paths with only one corner, use it
+        if (analysis.corners.length === 1) {
+            return analysis.corners[0];
+        }
+        
+        // For paths with multiple corners, find the most significant transition
+        // This is typically the corner with the largest Y-axis movement (vertical transition)
+        let bestCorner = analysis.corners[0];
+        let maxYChange = 0;
+        
+        analysis.corners.forEach(corner => {
+            const yChange = Math.abs(corner.endY - corner.startY);
+            if (yChange > maxYChange) {
+                maxYChange = yChange;
+                bestCorner = corner;
+            }
+        });
+        
+        // Log the decision for debugging
+        console.log(`[CORNER-SELECTION] ${hostage['Hebrew Name']}: Found ${analysis.corners.length} corners, selected corner with ${maxYChange.toFixed(1)}px Y-change at ${bestCorner.startPercent.toFixed(1)}%-${bestCorner.endPercent.toFixed(1)}%`);
+        
+        return bestCorner;
+    }
+
+    /**
      * Create gradient stops for released bodies
      * @param {Object} analysis - Path analysis
      * @param {Object} hostage - Hostage data
@@ -701,11 +737,14 @@ class ColorManager {
         const releaseColor = this.getReleaseColor(hostage);
         
         // This combines died-in-captivity with release
-        // Typically: living → dead (first corner) → released (second corner)
+        // Find the most appropriate corners for death and release transitions
         
         if (analysis.corners.length >= 2) {
-            const deathCorner = analysis.corners[0];
-            const releaseCorner = analysis.corners[1];
+            // For released body, use intelligent selection for the main transition
+            const mainCorner = this.findReleaseTransitionCorner(analysis, hostage);
+            // Use first corner as death transition if different from main
+            const deathCorner = mainCorner === analysis.corners[0] ? analysis.corners[1] : analysis.corners[0];
+            const releaseCorner = mainCorner;
             
             // Living until death corner
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
