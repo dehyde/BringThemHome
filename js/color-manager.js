@@ -9,16 +9,16 @@ class ColorManager {
         this.timeline = timelineCore;
         this.laneManager = laneManager;
         
-        // Color definitions - MAKE SURE THESE ARE VALID HEX COLORS
+        // Color definitions - ALIGNED WITH CONFIG.JS
         this.colors = {
             // Base colors
-            livingInCaptivity: '#DAA520', // Mustard color - VERIFY THIS EXISTS
-            deadInCaptivity: '#808080', // 50% Gray
+            livingInCaptivity: '#ef4444', // Red for kidnapped living (from config)
+            deadInCaptivity: '#7f1d1d', // Dark red for kidnapped deceased (from config)
             darkRed: '#8B0000', // Dark red for death transitions
             
-            // Release colors
-            releasedDeal: '#87CEEB', // Light blue
-            releasedMilitary: '#8FBC8F', // Light olive green
+            // Release colors - MATCH CONFIG.JS EXACTLY
+            releasedDeal: '#22c55e', // Green for released deal (from config)
+            releasedMilitary: '#3b82f6', // Blue for released military (from config)
             
             // Special states
             initialDeath: '#8B0000', // For those dead from beginning
@@ -421,16 +421,15 @@ class ColorManager {
         // Determine hostage journey type
         const journeyType = this.determineJourneyType(hostage);
         
-        // Debug logging for specific hostages
-        if (hostage['Hebrew Name'] === 'עפרי ברודץ\'' || hostage['Hebrew Name'] === 'אוהד יהלומי') {
-            console.log(`[GRADIENT-DEBUG] ${hostage['Hebrew Name']}:`, {
-                journeyType,
-                finalLane: hostage.finalLane,
-                currentStatus: hostage['Current Status'],
-                corners: analysis.corners.length,
-                transitions: analysis.transitions.length
-            });
-        }
+        // Debug logging for all hostages to identify color issues
+        console.log(`[GRADIENT-DEBUG] ${hostage['Hebrew Name']}:`, {
+            journeyType,
+            finalLane: hostage.finalLane,
+            currentStatus: hostage['Current Status'],
+            corners: analysis.corners.length,
+            transitions: analysis.transitions.length,
+            releaseColor: this.getReleaseColor(hostage)
+        });
         
         // Generate unique gradient ID
         const gradientId = `gradient-${this.gradientIdCounter++}-${hostage['Hebrew Name']?.replace(/\s+/g, '-')}`;
@@ -802,12 +801,23 @@ class ColorManager {
     getReleaseColor(hostage) {
         const circumstances = (hostage['Release/Death Circumstances'] || '').toLowerCase();
         
+        let color;
         if (circumstances.includes('military') || circumstances.includes('operation') || 
             circumstances.includes('rescue')) {
-            return this.colors.releasedMilitary;
+            color = this.colors.releasedMilitary;
         } else {
-            return this.colors.releasedDeal;
+            color = this.colors.releasedDeal;
         }
+        
+        // Debug logging for color assignment
+        console.log(`[COLOR-ASSIGNMENT] ${hostage['Hebrew Name']}:`, {
+            circumstances: hostage['Release/Death Circumstances'],
+            finalLane: hostage.finalLane,
+            assignedColor: color,
+            isMilitary: circumstances.includes('military') || circumstances.includes('operation') || circumstances.includes('rescue')
+        });
+        
+        return color;
     }
 
     /**
