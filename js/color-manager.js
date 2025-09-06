@@ -473,7 +473,8 @@ class ColorManager {
      * @returns {string} Journey type identifier
      */
     determineJourneyType(hostage) {
-        // Check current status first
+        // Check final lane first - this is the most reliable indicator
+        const finalLane = hostage.finalLane || '';
         const currentStatus = hostage['Current Status'] || '';
         const hasReleaseDate = hostage.releaseDate && hostage.releaseDate_valid;
         
@@ -495,8 +496,22 @@ class ColorManager {
             }
         }
         
-        // Determine based on status and dates
-        if (currentStatus.includes('Held in Gaza')) {
+        // Determine based on final lane first, then status and dates
+        if (finalLane.includes('released-deal-living') || finalLane.includes('released-military-living')) {
+            // Released alive - use final lane as primary indicator
+            return 'released-alive';
+        } else if (finalLane.includes('released-deal-deceased') || finalLane.includes('released-military-deceased')) {
+            // Released body - use final lane as primary indicator
+            return 'released-body';
+        } else if (finalLane.includes('kidnapped-deceased')) {
+            // Check if body was returned
+            if (hasReleaseDate) {
+                return 'released-body';
+            } else {
+                // Still held (body not returned)
+                return 'still-captive';
+            }
+        } else if (currentStatus.includes('Held in Gaza')) {
             // Still in captivity
             return 'still-captive';
         } else if (currentStatus.includes('Released')) {
