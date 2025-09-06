@@ -51,9 +51,9 @@ class TransitionEngine {
             return '';
         }
 
-        // Start the path
+        // Start the path with pixel-aligned coordinates
         const firstSegment = validSegments[0];
-        path.moveTo(firstSegment.startX, firstSegment.startY);
+        path.moveTo(Math.round(firstSegment.startX), Math.round(firstSegment.startY));
 
         // Generate each segment
         validSegments.forEach((segment, index) => {
@@ -103,6 +103,18 @@ class TransitionEngine {
             }
             
             const currentX = this.timeline.dateToX(currentDate);
+            
+            // Debug logging for specific hostages
+            if (hostage['Hebrew Name'] === 'איתי חן' || hostage['Hebrew Name'] === 'מקסים הרקין') {
+                console.log(`[VISIBILITY-DEBUG] ${hostage['Hebrew Name']} path coordinates:`, {
+                    currentDate: currentDate,
+                    currentX: currentX,
+                    timelineDomain: this.timeline.scales.x.domain(),
+                    timelineRange: this.timeline.scales.x.range(),
+                    timelineWidth: this.timeline.dimensions.width,
+                    svgWidth: Math.max(this.timeline.dimensions.containerWidth, this.timeline.config.minWidth)
+                });
+            }
             
             // Validate X coordinate - use fallback instead of skipping
             let safeCurrentX = currentX;
@@ -247,7 +259,8 @@ class TransitionEngine {
             console.error('🚨 TRANSITION-ENGINE: Invalid coordinates in addHorizontalSegment:', segment);
             return;
         }
-        path.lineTo(segment.endX, segment.endY);
+        // Round coordinates for pixel-perfect rendering
+        path.lineTo(Math.round(segment.endX), Math.round(segment.endY));
     }
 
     /**
@@ -302,6 +315,7 @@ class TransitionEngine {
         const point4Y = endY;
         
         // Create smooth corner transitions with different radii for each corner
+        // Don't round coordinates in curves - let geometricPrecision handle it
         // 1. Line to corner start
         path.lineTo(point1X, point1Y);
         
@@ -517,28 +531,6 @@ class TransitionEngine {
             hostage: hostage,
             path: this.generateTransitionPath(hostage)
         }));
-    }
-
-    /**
-     * Calculate total path length from segments
-     * @param {Array} segments - Array of path segments
-     * @returns {number} Total path length in pixels
-     */
-    calculatePathLength(segments) {
-        let totalLength = 0;
-        segments.forEach(segment => {
-            if (segment.type === 'line') {
-                const dx = segment.endX - segment.startX;
-                const dy = segment.endY - segment.startY;
-                totalLength += Math.sqrt(dx * dx + dy * dy);
-            } else if (segment.type === 'curve') {
-                // Approximate curve length (simplified calculation)
-                const dx = segment.endX - segment.startX;
-                const dy = segment.endY - segment.startY;
-                totalLength += Math.sqrt(dx * dx + dy * dy) * 1.2; // Rough approximation
-            }
-        });
-        return totalLength;
     }
 
     /**

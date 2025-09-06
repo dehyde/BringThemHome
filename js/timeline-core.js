@@ -68,11 +68,16 @@ class TimelineCore {
         this.dimensions = {
             containerWidth: Math.max(rect.width || viewportWidth, this.config.minWidth),
             containerHeight: Math.max(rect.height || viewportHeight, this.config.minHeight),
-            width: Math.max((rect.width || viewportWidth) - this.config.margins.left - this.config.margins.right, 600),
+            width: Math.max((rect.width || viewportWidth) - this.config.margins.left - this.config.margins.right, this.config.minWidth - this.config.margins.left - this.config.margins.right),
             height: Math.max((rect.height || viewportHeight) - this.config.margins.top - this.config.margins.bottom, 400)
         };
         
-        console.log('Timeline dimensions calculated:', this.dimensions);
+        console.log('[VISIBILITY-DEBUG] Timeline dimensions:', {
+            timelineWidth: this.dimensions.width,
+            svgWidth: Math.max(this.dimensions.containerWidth, this.config.minWidth),
+            minWidth: this.config.minWidth,
+            margins: this.config.margins
+        });
     }
 
     /**
@@ -114,9 +119,10 @@ class TimelineCore {
     setupCoordinateSystem() {
         // X-scale: RTL timeline (right = past, left = present)  
         // For RTL: early dates (Oct 7) on right (large X), recent dates on left (small X)
+        const svgWidth = Math.max(this.dimensions.containerWidth, this.config.minWidth);
         this.scales.x = d3.scaleTime()
             .domain([this.config.timelineStart, this.config.timelineEnd]) // Normal domain: start to end
-            .range([this.dimensions.width, 0]); // Reversed range for RTL: right=max, left=0
+            .range([svgWidth - this.config.margins.left - this.config.margins.right, 0]); // Use full SVG width
         
         // Y-scale will be set by lane manager based on data
         this.scales.y = d3.scaleLinear()
@@ -244,10 +250,12 @@ class TimelineCore {
     /**
      * Convert date to x-coordinate
      * @param {Date} date - Date to convert
-     * @returns {number} X-coordinate
+     * @returns {number} X-coordinate (pixel-aligned)
      */
     dateToX(date) {
-        return this.scales.x(date);
+        const x = this.scales.x(date);
+        // Round to whole pixels to prevent subpixel rendering issues
+        return Math.round(x);
     }
 
     /**

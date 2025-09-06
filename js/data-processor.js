@@ -589,11 +589,31 @@ class DataProcessor {
             this.parseCSV(csvText);
             
             // DEBUG: Check if עדן ירושלמי is in the raw data
-            const edenFound = this.rawData.find(record => record['Hebrew Name'] === 'עדן ירושלמי');
-            if (edenFound) {
-                console.log(`[EDEN_DEBUG] Found in raw data: ${edenFound['Hebrew Name']}`);
+            
+            // DEBUG: Check for specific hostages
+            const itaiChen = this.rawData.find(record => record['Hebrew Name'] === 'איתי חן');
+            const maximHarkin = this.rawData.find(record => record['Hebrew Name'] === 'מקסים הרקין');
+            
+            if (itaiChen) {
+                console.log(`[VISIBILITY-DEBUG] Found איתי חן in raw data:`, {
+                    name: itaiChen['Hebrew Name'],
+                    status: itaiChen['Current Status'],
+                    deathDate: itaiChen['Date of Death'],
+                    releaseDate: itaiChen['Release Date']
+                });
             } else {
-                console.log(`[EDEN_DEBUG] NOT FOUND in raw data! Available names:`, this.rawData.slice(0, 5).map(r => r['Hebrew Name']));
+                console.log(`[VISIBILITY-DEBUG] איתי חן NOT FOUND in raw data!`);
+            }
+            
+            if (maximHarkin) {
+                console.log(`[VISIBILITY-DEBUG] Found מקסים הרקין in raw data:`, {
+                    name: maximHarkin['Hebrew Name'],
+                    status: maximHarkin['Current Status'],
+                    deathDate: maximHarkin['Date of Death'],
+                    releaseDate: maximHarkin['Release Date']
+                });
+            } else {
+                console.log(`[VISIBILITY-DEBUG] מקסים הרקין NOT FOUND in raw data!`);
             }
             
             // Phase 1b: Validate and normalize dates
@@ -612,6 +632,34 @@ class DataProcessor {
             console.log(`Processing complete: ${this.processedData.length} records processed`);
             if (this.errors.length > 0) {
                 console.warn(`${this.errors.length} validation errors encountered:`, this.errors);
+            }
+            
+            // Journey types will be set later when color manager is available
+            
+            // DEBUG: Check if hostages made it through processing
+            const itaiChenProcessed = this.processedData.find(record => record['Hebrew Name'] === 'איתי חן');
+            const maximHarkinProcessed = this.processedData.find(record => record['Hebrew Name'] === 'מקסים הרקין');
+            
+            if (itaiChenProcessed) {
+                console.log(`[VISIBILITY-DEBUG] איתי חן made it through processing:`, {
+                    name: itaiChenProcessed['Hebrew Name'],
+                    status: itaiChenProcessed['Current Status'],
+                    finalLane: itaiChenProcessed.finalLane,
+                    journeyType: itaiChenProcessed.journeyType
+                });
+            } else {
+                console.log(`[VISIBILITY-DEBUG] איתי חן LOST during processing!`);
+            }
+            
+            if (maximHarkinProcessed) {
+                console.log(`[VISIBILITY-DEBUG] מקסים הרקין made it through processing:`, {
+                    name: maximHarkinProcessed['Hebrew Name'],
+                    status: maximHarkinProcessed['Current Status'],
+                    finalLane: maximHarkinProcessed.finalLane,
+                    journeyType: maximHarkinProcessed.journeyType
+                });
+            } else {
+                console.log(`[VISIBILITY-DEBUG] מקסים הרקין LOST during processing!`);
             }
             
             return this.processedData;

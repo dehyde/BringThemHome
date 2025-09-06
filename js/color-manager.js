@@ -9,10 +9,10 @@ class ColorManager {
         this.timeline = timelineCore;
         this.laneManager = laneManager;
         
-        // Color definitions
+        // Color definitions - MAKE SURE THESE ARE VALID HEX COLORS
         this.colors = {
             // Base colors
-            livingInCaptivity: '#DAA520', // Mustard color
+            livingInCaptivity: '#DAA520', // Mustard color - VERIFY THIS EXISTS
             deadInCaptivity: '#808080', // 50% Gray
             darkRed: '#8B0000', // Dark red for death transitions
             
@@ -24,6 +24,9 @@ class ColorManager {
             initialDeath: '#8B0000', // For those dead from beginning
             transitionGradientMid: '#A0522D' // Mid-point for living->dead transitions
         };
+        
+        // Debug: Log colors to verify
+        console.log('[COLOR-MANAGER] Colors initialized:', this.colors);
         
         // Gradient definitions storage
         this.gradientDefs = new Map();
@@ -442,6 +445,11 @@ class ColorManager {
                 break;
                 
             case 'still-captive':
+                // Check if we should use solid color instead of gradient
+                if (analysis.corners.length === 0) {
+                    console.log(`[SOLID-COLOR] Using solid color for ${hostage['Hebrew Name']} (no transitions)`);
+                    return null; // Return null to trigger solid color fallback
+                }
                 gradientStops = this.createStillCaptiveGradient(analysis, hostage);
                 break;
                 
@@ -465,10 +473,11 @@ class ColorManager {
      * @returns {string} Journey type identifier
      */
     determineJourneyType(hostage) {
-        const hasDeathTransition = hostage.path?.some(p => p.event === 'died');
-        const hasReleaseTransition = hostage.path?.some(p => p.event === 'released');
+        // Check current status first
+        const currentStatus = hostage['Current Status'] || '';
+        const hasReleaseDate = hostage.releaseDate && hostage.releaseDate_valid;
         
-        // Safely handle deathDate - it might be a string, Date object, or null
+        // Check if died on Oct 7 specifically
         let diedOnOct7 = false;
         if (hostage.deathDate) {
             try {
@@ -477,29 +486,55 @@ class ColorManager {
                     new Date(hostage.deathDate);
                 
                 if (!isNaN(deathDate.getTime())) {
-                    diedOnOct7 = deathDate.getTime() === new Date('2023-10-07').getTime();
+                    // Check if death date is Oct 7, 2023
+                    const oct7 = new Date('2023-10-07');
+                    diedOnOct7 = Math.abs(deathDate.getTime() - oct7.getTime()) < 86400000; // Within 24 hours
                 }
             } catch (error) {
                 console.warn('Error parsing death date for hostage:', hostage['Hebrew Name'], error);
             }
         }
         
-        // Use the correct field name for status
-        const currentStatus = hostage['Current Status'] || '';
-        
-        if (diedOnOct7) {
+        // Determine based on status and dates
+        if (currentStatus.includes('Held in Gaza')) {
+            // Still in captivity
+            return 'still-captive';
+        } else if (currentStatus.includes('Released')) {
+            // Released alive
+            return 'released-alive';
+        } else if (currentStatus.includes('Deceased - Returned')) {
+            // Body returned
+            return 'released-body';
+        } else if (currentStatus.includes('Deceased')) {
+            // Check if body was returned
+            if (hasReleaseDate) {
+                return 'released-body';
+            } else {
+                // Still held (body not returned)
+                return 'still-captive';
+            }
+        } else if (diedOnOct7 && !hasReleaseDate) {
+            // Died on Oct 7, body still held
+            return 'still-captive';
+        } else if (diedOnOct7 && hasReleaseDate) {
+            // Died on Oct 7, body returned
             return 'dead-from-start';
-        } else if (hasDeathTransition && hasReleaseTransition) {
+        }
+        
+        // Check path for transitions
+        const hasDeathTransition = hostage.path?.some(p => p.event === 'died');
+        const hasReleaseTransition = hostage.path?.some(p => p.event === 'released');
+        
+        if (hasDeathTransition && hasReleaseTransition) {
             return 'released-body';
         } else if (hasDeathTransition && !hasReleaseTransition) {
-            return 'died-in-captivity';
+            return 'still-captive'; // Died but body not returned
         } else if (hasReleaseTransition) {
             return 'released-alive';
-        } else if (currentStatus.includes('Held in Gaza') || currentStatus.includes('Deceased') && !hostage.releaseDate) {
-            return 'still-captive';
-        } else {
-            return 'still-captive';
         }
+        
+        // Default: still captive
+        return 'still-captive';
     }
 
     /**
@@ -675,32 +710,59 @@ class ColorManager {
      * @returns {Array} Gradient stops
      */
     createStillCaptiveGradient(analysis, hostage) {
-        // Check if died in captivity but body not returned
-        const isDead = hostage.deathDate || hostage.finalLane?.includes('deceased');
+        // Debug log
+        console.log(`[STILL-CAPTIVE] Creating gradient for ${hostage['Hebrew Name']}`);
+        console.log(`[STILL-CAPTIVE] Current Status: ${hostage['Current Status']}`);
+        console.log(`[STILL-CAPTIVE] Analysis corners: ${analysis.corners.length}`);
         
-        if (isDead && analysis.corners.length > 0) {
-            // Has death transition
+        // Ensure we have valid colors
+        const mustardColor = this.colors.livingInCaptivity || '#DAA520';
+        const grayColor = this.colors.deadInCaptivity || '#808080';
+        const redColor = this.colors.darkRed || '#8B0000';
+        
+        // Check if died in captivity but body not returned
+        const isDead = hostage.deathDate || 
+                       hostage['Current Status']?.toLowerCase().includes('deceased') ||
+                       hostage.finalLane === 'kidnapped-deceased';
+        
+        console.log(`[STILL-CAPTIVE] Is dead: ${isDead}`);
+        
+        // Check if hostage has been in same status from beginning (no transitions)
+        const hasTransitions = analysis.corners.length > 0;
+        console.log(`[STILL-CAPTIVE] Has transitions: ${hasTransitions}`);
+        
+        if (isDead && hasTransitions) {
+            // Has death transition - create gradient
             const deathCorner = analysis.corners[0];
             
-            return [
-                { offset: '0%', color: this.colors.livingInCaptivity },
-                { offset: `${deathCorner.startPercent}%`, color: this.colors.livingInCaptivity },
-                { offset: `${(deathCorner.startPercent + deathCorner.endPercent) / 2}%`, color: this.colors.darkRed },
-                { offset: `${deathCorner.endPercent}%`, color: this.colors.deadInCaptivity },
-                { offset: '100%', color: this.colors.deadInCaptivity }
+            const stops = [
+                { offset: '0%', color: mustardColor },
+                { offset: `${deathCorner.startPercent}%`, color: mustardColor },
+                { offset: `${(deathCorner.startPercent + deathCorner.endPercent) / 2}%`, color: redColor },
+                { offset: `${deathCorner.endPercent}%`, color: grayColor },
+                { offset: '100%', color: grayColor }
             ];
+            
+            console.log(`[STILL-CAPTIVE] Death transition stops:`, stops);
+            return stops;
         } else if (isDead) {
-            // Dead but no visible transition
-            return [
-                { offset: '0%', color: this.colors.deadInCaptivity },
-                { offset: '100%', color: this.colors.deadInCaptivity }
+            // Dead but no transitions - SOLID COLOR
+            const stops = [
+                { offset: '0%', color: grayColor },
+                { offset: '100%', color: grayColor }
             ];
+            
+            console.log(`[STILL-CAPTIVE] Dead (solid color) stops:`, stops);
+            return stops;
         } else {
-            // Still alive in captivity - ensure visible stroke
-            return [
-                { offset: '0%', color: this.colors.livingInCaptivity },
-                { offset: '100%', color: this.colors.livingInCaptivity }
+            // Still alive in captivity - SOLID COLOR
+            const stops = [
+                { offset: '0%', color: mustardColor },
+                { offset: '100%', color: mustardColor }
             ];
+            
+            console.log(`[STILL-CAPTIVE] Alive (solid color) stops:`, stops);
+            return stops;
         }
     }
 
@@ -726,6 +788,10 @@ class ColorManager {
      * @param {Array} stops - Array of gradient stops
      */
     createGradientElement(gradientId, stops) {
+        // Debug: Log what we're creating
+        console.log(`[GRADIENT-CREATE] Creating gradient: ${gradientId}`);
+        console.log(`[GRADIENT-CREATE] Stops:`, stops);
+        
         // Create linear gradient
         const gradient = this.defsElement
             .append('linearGradient')
@@ -735,12 +801,13 @@ class ColorManager {
             .attr('x2', '0%')    // RTL: End at left
             .attr('y2', '0%');
         
-        // Add stops
-        stops.forEach(stop => {
+        // Add stops with debugging
+        stops.forEach((stop, index) => {
+            console.log(`[GRADIENT-CREATE] Stop ${index}: ${stop.offset} = ${stop.color}`);
             gradient.append('stop')
                 .attr('offset', stop.offset)
                 .attr('stop-color', stop.color)
-                .attr('stop-opacity', 1);
+                .attr('stop-opacity', 1);  // Ensure opacity is 1
         });
         
         // Store gradient definition
@@ -771,7 +838,16 @@ class ColorManager {
                 // Store gradient ID for reference
                 pathElement.attr('data-gradient-id', gradientId);
                 
-                // Debug: Log successful gradient application
+                // CRITICAL: Verify the gradient was actually applied
+                setTimeout(() => {
+                    const computedStroke = pathElement.style('stroke');
+                    if (!computedStroke || computedStroke === 'none' || computedStroke === 'url()') {
+                        console.warn(`[COLOR-DEBUG] Gradient failed for ${hostage['Hebrew Name']}, applying fallback`);
+                        const fallbackColor = this.getFallbackColor(hostage);
+                        pathElement.style('stroke', fallbackColor);
+                    }
+                }, 0);
+                
                 console.log(`[COLOR-DEBUG] Applied gradient ${gradientId} to ${hostage['Hebrew Name']}`);
             } else {
                 // Fallback to solid color
@@ -801,11 +877,25 @@ class ColorManager {
      * @returns {string} Color hex code
      */
     getFallbackColor(hostage) {
+        const currentStatus = hostage['Current Status'] || '';
+        
+        // Check if still in captivity
+        if (currentStatus.includes('Held in Gaza')) {
+            // Check if dead or alive
+            if (hostage.deathDate || currentStatus.toLowerCase().includes('deceased')) {
+                return this.colors.deadInCaptivity;
+            } else {
+                return this.colors.livingInCaptivity;
+            }
+        }
+        
+        // Check final lane
         if (hostage.finalLane?.includes('deceased')) {
             return this.colors.deadInCaptivity;
         } else if (hostage.finalLane?.includes('released')) {
             return this.getReleaseColor(hostage);
         } else {
+            // Default for still captive
             return this.colors.livingInCaptivity;
         }
     }
@@ -886,6 +976,26 @@ class ColorManager {
                 this.debugGradient(hostage, hostage.path);
             }
         });
+    }
+
+    /**
+     * Debug: Log hostage status information
+     * @param {Object} hostage - Hostage data
+     */
+    debugHostageStatus(hostage) {
+        console.log(`[COLOR-DEBUG] Hostage: ${hostage['Hebrew Name']}`);
+        console.log(`  Current Status: ${hostage['Current Status']}`);
+        console.log(`  Final Lane: ${hostage.finalLane}`);
+        console.log(`  Has Death Date: ${!!hostage.deathDate}`);
+        console.log(`  Has Release Date: ${!!hostage.releaseDate}`);
+        console.log(`  Journey Type: ${this.determineJourneyType(hostage)}`);
+        
+        const pathString = hostage.path ? 'Has path' : 'No path';
+        console.log(`  Path: ${pathString}`);
+        
+        if (hostage['Current Status']?.includes('Held in Gaza')) {
+            console.log(`  >>> Still in captivity!`);
+        }
     }
 }
 

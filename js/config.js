@@ -36,10 +36,10 @@ const AppConfig = {
 
     // Lane Management Configuration  
     lanes: {
-        lineSpacing: 0,
+        lineSpacing: 0, // No spacing between lines - they should be perfectly adjacent
         lanePadding: 12,
         sectionSpacing: 25,
-        lineWidth: 1,
+        lineWidth: 1, // 1px lines for pixel-perfect rendering
         turnRadius: 4,
         minLaneHeight: 20,
         

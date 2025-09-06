@@ -136,15 +136,18 @@ body {
 
 /* Hostage Lines */
 .hostage-line {
-    stroke-width: 1.5;
+    stroke-width: 1;
     stroke-linecap: round;
     stroke-linejoin: round;
     fill: none;
     opacity: 1;
     transition: opacity 0.2s ease;
-    shape-rendering: geometricPrecision;
-    /* Prevent anti-aliasing inconsistencies */
+    /* Use auto rendering for optimal line and curve rendering */
+    shape-rendering: auto;
+    /* Ensure consistent rendering across browsers */
     vector-effect: non-scaling-stroke;
+    /* Force pixel alignment */
+    stroke-dasharray: none;
 }
 
 /* Gradient colors are now handled by ColorManager - these rules are disabled to allow gradients */

@@ -357,7 +357,7 @@ class HostageTimelineApp {
             .attr('class', d => `hostage-line ${d.hostage.finalLane}`)
             .attr('data-name', d => d.hostage['Hebrew Name'])
             .attr('d', d => d.path)
-            .style('stroke-width', 1.5)
+            .style('stroke-width', 1)
             .style('fill', 'none')
             .style('stroke-linecap', 'round')
             .style('stroke-linejoin', 'round');
