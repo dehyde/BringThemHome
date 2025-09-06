@@ -416,10 +416,14 @@ class ColorManager {
      */
     createGradientForHostage(hostage, pathString) {
         const analysis = this.analyzePath(pathString);
-        if (!analysis) return null;
+        if (!analysis) {
+            console.warn(`[GRADIENT-FIX] No path analysis for ${hostage['Hebrew Name']}`);
+            return null;
+        }
         
         // Determine hostage journey type
         const journeyType = this.determineJourneyType(hostage);
+        
         
         // Debug logging for all hostages to identify color issues
         console.log(`[GRADIENT-DEBUG] ${hostage['Hebrew Name']}:`, {
@@ -431,8 +435,9 @@ class ColorManager {
             releaseColor: this.getReleaseColor(hostage)
         });
         
-        // Generate unique gradient ID
-        const gradientId = `gradient-${this.gradientIdCounter++}-${hostage['Hebrew Name']?.replace(/\s+/g, '-')}`;
+        // Generate unique gradient ID - sanitize special characters for valid SVG IDs
+        const sanitizedName = hostage['Hebrew Name']?.replace(/\s+/g, '-').replace(/'/g, '').replace(/[^\w\-א-ת]/g, '') || 'unknown';
+        const gradientId = `gradient-${this.gradientIdCounter++}-${sanitizedName}`;
         
         // Create gradient based on journey type
         let gradientStops = [];
@@ -864,6 +869,7 @@ class ColorManager {
      */
     applyGradientToPath(pathElement, hostage, pathString) {
         try {
+            
             // Debug logging for specific hostages
             if (hostage['Hebrew Name'] === 'עפרי ברודץ\'' || hostage['Hebrew Name'] === 'אוהד יהלומי') {
                 console.log(`[APPLY-DEBUG] ${hostage['Hebrew Name']} - Starting gradient application`);
@@ -881,6 +887,7 @@ class ColorManager {
                 // Store gradient ID for reference
                 pathElement.attr('data-gradient-id', gradientId);
                 
+                
                 // Debug logging for specific hostages
                 if (hostage['Hebrew Name'] === 'עפרי ברודץ\'' || hostage['Hebrew Name'] === 'אוהד יהלומי') {
                     console.log(`[APPLY-DEBUG] ${hostage['Hebrew Name']} - Applied gradient: ${gradientId}`);
@@ -889,10 +896,14 @@ class ColorManager {
                 // CRITICAL: Verify the gradient was actually applied
                 setTimeout(() => {
                     const computedStroke = pathElement.style('stroke');
-                    if (!computedStroke || computedStroke === 'none' || computedStroke === 'url()') {
+                    // Only apply fallback if stroke is completely missing or explicitly 'none'
+                    // Don't override valid gradient URLs
+                    if (!computedStroke || computedStroke === 'none') {
                         console.warn(`[COLOR-DEBUG] Gradient failed for ${hostage['Hebrew Name']}, applying fallback`);
                         const fallbackColor = this.getFallbackColor(hostage);
                         pathElement.style('stroke', fallbackColor);
+                    } else if (computedStroke.includes('url(')) {
+                        console.log(`[COLOR-DEBUG] Gradient successfully applied for ${hostage['Hebrew Name']}: ${computedStroke}`);
                     }
                 }, 0);
                 

@@ -157,6 +157,7 @@ class DataProcessor {
             validatedRecord.deathDateRange = this.parseRangeDate(record['Date of Death']);
         }
         
+        
         // CRITICAL FIX: Calculate missing release dates from Hebrew "שוחרר אחרי XX יום בשבי" text
         if (!validatedRecord.releaseDate_valid || !validatedRecord.releaseDate) {
             const hebrewSummary = record['Kidnapping Summary (Hebrew)'] || '';
@@ -173,6 +174,7 @@ class DataProcessor {
                 validatedRecord.releaseDate_valid = true;
             }
         }
+        
         
         return validatedRecord;
     }
