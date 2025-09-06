@@ -141,14 +141,8 @@ class ColorManager {
                     segment.endX = cmd.x;
                     segment.endY = cmd.y;
                     
-                    // Calculate curve length more accurately using bezier approximation
-                    const q1x = currentX + 2/3 * (cmd.cx - currentX);
-                    const q1y = currentY + 2/3 * (cmd.cy - currentY);
-                    const q2x = cmd.x + 2/3 * (cmd.cx - cmd.x);
-                    const q2y = cmd.y + 2/3 * (cmd.cy - cmd.y);
-                    
-                    // Approximate length using multiple segments
-                    const steps = 10;
+                    // Calculate curve length more accurately using bezier approximation with more steps
+                    const steps = 20; // Increased from 10 to 20 for better accuracy
                     let curveLength = 0;
                     let prevX = currentX;
                     let prevY = currentY;
@@ -159,6 +153,7 @@ class ColorManager {
                         const mt = 1 - t;
                         const mt2 = mt * mt;
                         
+                        // Quadratic bezier curve formula: (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
                         const x = mt2 * currentX + 2 * mt * t * cmd.cx + t2 * cmd.x;
                         const y = mt2 * currentY + 2 * mt * t * cmd.cy + t2 * cmd.y;
                         
@@ -619,13 +614,15 @@ class ColorManager {
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
             stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.livingInCaptivity });
             
-            // Red color ONLY during the vertical transition line
+            // Transition over 50% of the vertical transition line  
             const verticalStart = deathCorner.startPercent;
             const verticalEnd = deathCorner.endPercent;
+            const verticalLength = verticalEnd - verticalStart;
+            const deathTransitionEnd = verticalStart + (verticalLength * 0.5); // 50% of vertical line
             
-            // The vertical line should be red
+            // The vertical line should transition from red to dark red over 50% of its length
             stops.push({ offset: `${verticalStart}%`, color: this.colors.livingInCaptivity });
-            stops.push({ offset: `${(verticalStart + verticalEnd) / 2}%`, color: this.colors.darkRed });
+            stops.push({ offset: `${deathTransitionEnd}%`, color: this.colors.deadInCaptivity });
             stops.push({ offset: `${verticalEnd}%`, color: this.colors.deadInCaptivity });
             
             // Check for release (body return)
@@ -635,8 +632,11 @@ class ColorManager {
                 
                 // Hold gray until release corner
                 stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.deadInCaptivity });
-                // Gradient during release corner
-                stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
+                
+                // Transition over 50% of the release vertical line
+                const releaseVerticalLength = releaseCorner.endPercent - releaseCorner.startPercent;
+                const releaseTransitionEnd = releaseCorner.startPercent + (releaseVerticalLength * 0.5);
+                stops.push({ offset: `${releaseTransitionEnd}%`, color: releaseColor });
                 // Continue with release color
                 stops.push({ offset: '100%', color: releaseColor });
             } else {
@@ -670,8 +670,12 @@ class ColorManager {
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
             stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.livingInCaptivity });
             
-            // Gradient ONLY during the corner
-            stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
+            // Extend transition to 50% of the vertical segment after corner start
+            const verticalTransitionLength = (releaseCorner.endPercent - releaseCorner.startPercent) * 0.5;
+            const transitionEndPercent = releaseCorner.startPercent + verticalTransitionLength;
+            
+            // Transition from red to green over 50% of the vertical line
+            stops.push({ offset: `${transitionEndPercent}%`, color: releaseColor });
             
             // Continue with release color for rest of line
             stops.push({ offset: '100%', color: releaseColor });
@@ -707,16 +711,19 @@ class ColorManager {
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
             stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.livingInCaptivity });
             
-            // Death transition
-            const deathMidPoint = (deathCorner.startPercent + deathCorner.endPercent) / 2;
-            stops.push({ offset: `${deathMidPoint}%`, color: this.colors.darkRed });
+            // Death transition over 50% of vertical line
+            const deathVerticalLength = deathCorner.endPercent - deathCorner.startPercent;
+            const deathTransitionEnd = deathCorner.startPercent + (deathVerticalLength * 0.5);
+            stops.push({ offset: `${deathTransitionEnd}%`, color: this.colors.deadInCaptivity });
             stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.deadInCaptivity });
             
             // Hold gray until release
             stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.deadInCaptivity });
             
-            // Release transition
-            stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
+            // Release transition over 50% of vertical line
+            const releaseVerticalLength = releaseCorner.endPercent - releaseCorner.startPercent;
+            const releaseTransitionEnd = releaseCorner.startPercent + (releaseVerticalLength * 0.5);
+            stops.push({ offset: `${releaseTransitionEnd}%`, color: releaseColor });
             stops.push({ offset: '100%', color: releaseColor });
         } else if (analysis.corners.length === 1) {
             // Only one corner - assume it's release
