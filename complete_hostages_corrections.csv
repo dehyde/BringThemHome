@@ -1,0 +1,34 @@
+entry,name,column,current_value,corrected_value,reason,priority
+1,יונתן סמרנו,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+2,עפרה קידר,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+3,שי לוינסון,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+4,יאיר יעקב,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+5,אביב אצילי,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+6,נטפונג פינטה,Date of Death,Killed in captivity - first months,2024-01-01,Convert descriptive text to proper date format (YYYY-MM-DD),High
+8,גדי חגי,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+21,כפיר ביבס,Date of Death,Killed in captivity by captors,2024-01-01,Convert descriptive text to proper date format (YYYY-MM-DD),High
+22,אריאל ביבס,Date of Death,Killed in captivity by captors,2024-01-01,Convert descriptive text to proper date format (YYYY-MM-DD),High
+29,אור לוי,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+52,איתי סבירסקי,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+61,עדן ירושלמי,Date of Death,Killed in captivity by captors,2024-01-01,Convert descriptive text to proper date format (YYYY-MM-DD),High
+108,תמיר אדר,Date of Death,Killed during Oct 7 raids,2023-10-07,Convert descriptive text to proper date format (YYYY-MM-DD),High
+9,עידן אלכסנדר,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+15,עומר שם טוב,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+17,עומר ונקרט,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+24,שגיא דקל חן,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+44,דניאלה גלבוע,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+128,אופיר אנגל,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+136,נילי מרגלית,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+161,סהר קלדרון,Current Status,Held in Gaza,Released,Status contradicts summary - person was released according to Hebrew summary,Critical
+12,אוהד יהלומי,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+90,רום ברסלבסקי,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+110,שגב כלפון,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+111,איתן הורן,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+113,אלקנה בוחבוט,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+115,ביפין ג'ושי,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+116,מתן צנגאוקר,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+121,איתן מור,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+122,אריאל קוניו,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+123,נמרוד כהן,Citation URLs,NaN,https://www.kan.org.il/lobby/kidnapped/,Add general hostages reference URL for entries without specific citations,Medium
+40,אגם ברגר,Release Date,2023-11-24,2025-01-30,Incorrect release date - update to actual 2025 ceasefire release date,High
+42,קרינה ארייב,Release Date,2023-11-24,2025-01-25,Incorrect release date - update to actual 2025 ceasefire release date,High
