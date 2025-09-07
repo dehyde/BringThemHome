@@ -134,13 +134,13 @@ body {
     stroke-width: 1;
 }
 
-/* Hostage Lines */
+/* Hostage Lines - Base opacity enforced with !important */
 .hostage-line {
     stroke-width: 1;
     stroke-linecap: round;
     stroke-linejoin: round;
     fill: none;
-    opacity: 1;
+    opacity: 1 !important;
     transition: opacity 0.2s ease;
     /* Use auto rendering for optimal line and curve rendering */
     shape-rendering: auto;
@@ -157,8 +157,8 @@ body {
 }
 
 .hostage-line.kidnapped-deceased {
-    stroke: rgba(127, 29, 29, 1);
-    opacity: 0.3;
+    stroke: #7f1d1d;
+    opacity: 1;
 }
 
 .hostage-line.released-military-living {
@@ -166,8 +166,8 @@ body {
 }
 
 .hostage-line.released-military-deceased {
-    stroke: rgba(59, 130, 246, 1);
-    opacity: 0.3;
+    stroke: #3b82f6;
+    opacity: 1;
 }
 
 .hostage-line.released-deal-living {
@@ -175,8 +175,8 @@ body {
 }
 
 .hostage-line.released-deal-deceased {
-    stroke: rgba(34, 197, 94, 1);
-    opacity: 0.3;
+    stroke: #22c55e;
+    opacity: 1;
 }
 */
 
@@ -187,7 +187,7 @@ body {
 }
 
 .timeline-svg.hovering .hostage-line:not(:hover) {
-    opacity: 0.3;
+    opacity: 0.3 !important;
 }
 
 /* Lane Dividers */

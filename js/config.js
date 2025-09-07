@@ -60,7 +60,7 @@ const AppConfig = {
                 method: 'military',
                 status: 'deceased',
                 label: 'חולצו במבצע - נפטרו',
-                color: 'rgba(59, 130, 246, 0.7)',
+                color: '#3b82f6',
                 priority: 2
             },
             'released-deal-living': {
@@ -78,7 +78,7 @@ const AppConfig = {
                 method: 'deal',
                 status: 'deceased',
                 label: 'שוחררו בעסקה - נפטרו',
-                color: 'rgba(34, 197, 94, 0.7)',
+                color: '#22c55e',
                 priority: 4
             },
             'kidnapped-living': {
@@ -94,7 +94,7 @@ const AppConfig = {
                 section: 'kidnapped',
                 status: 'deceased',
                 label: 'חטופים מתים',
-                color: 'rgba(127, 29, 29, 0.7)',
+                color: '#7f1d1d',
                 priority: 6
             }
         }
@@ -186,7 +186,7 @@ const AppConfig = {
         
         // Debug colors
         debug: {
-            boundary: 'rgba(255, 0, 0, 0.3)',
+            boundary: '#ff0000',
             highlight: '#fbbf24'
         }
     },

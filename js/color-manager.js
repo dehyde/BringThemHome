@@ -81,6 +81,12 @@ class ColorManager {
         let pathLength = 0;
         let startX = 0, startY = 0; // Track path start for Z command
         
+        // Debug: Log all command types to see if we're missing any
+        const commandTypes = [...new Set(commands.map(cmd => cmd.type))];
+        if (commandTypes.includes('A')) {
+            console.log(`[PATH-DEBUG] Found ARC commands in path! Types: ${commandTypes.join(', ')}`);
+        }
+        
         commands.forEach((cmd, index) => {
             const segment = {
                 type: cmd.type,
@@ -247,6 +253,64 @@ class ColorManager {
                     pathLength += segment.length;
                     break;
                     
+                case 'A': // Elliptical arc
+                    // Arc parameters: rx ry x-axis-rotation large-arc-flag sweep-flag x y
+                    const rx = cmd.rx;
+                    const ry = cmd.ry;
+                    const xAxisRotation = cmd.xAxisRotation * Math.PI / 180; // Convert to radians
+                    const largeArcFlag = cmd.largeArcFlag;
+                    const sweepFlag = cmd.sweepFlag;
+                    const endX = cmd.x;
+                    const endY = cmd.y;
+                    
+                    // Calculate arc length using ellipse perimeter approximation
+                    const arcLength = this.calculateArcLength(
+                        currentX, currentY, 
+                        endX, endY,
+                        rx, ry, xAxisRotation, largeArcFlag, sweepFlag
+                    );
+                    
+                    segment.length = arcLength;
+                    segment.endX = endX;
+                    segment.endY = endY;
+                    
+                    // Determine if this is a transition corner (similar logic to curves)
+                    const arcYChange = Math.abs(endY - currentY);
+                    const isArcTransition = arcYChange > 5; // Significant Y change indicates lane transition
+                    
+                    // Mark this as a corner
+                    const arcCorner = {
+                        index: analysis.segments.length,
+                        startLength: pathLength,
+                        endLength: pathLength + segment.length,
+                        startX: currentX,
+                        startY: currentY,
+                        endX: endX,
+                        endY: endY,
+                        isTransition: isArcTransition,
+                        direction: endY > currentY ? 'down' : 'up',
+                        type: 'arc'
+                    };
+                    
+                    analysis.corners.push(arcCorner);
+                    
+                    if (isArcTransition) {
+                        analysis.transitions.push({
+                            type: 'arc',
+                            startLength: pathLength,
+                            endLength: pathLength + segment.length,
+                            startY: currentY,
+                            endY: endY,
+                            direction: arcCorner.direction,
+                            cornerIndex: analysis.corners.length - 1
+                        });
+                    }
+                    
+                    currentX = endX;
+                    currentY = endY;
+                    pathLength += segment.length;
+                    break;
+                    
                 case 'Z': // Close path
                     const closeDx = startX - currentX;
                     const closeDy = startY - currentY;
@@ -256,6 +320,13 @@ class ColorManager {
                     currentX = startX;
                     currentY = startY;
                     pathLength += segment.length;
+                    break;
+                    
+                default:
+                    console.log(`[PATH-WARNING] Unhandled path command: ${cmd.type}`, cmd);
+                    segment.length = 0; // Skip unhandled commands
+                    segment.endX = currentX;
+                    segment.endY = currentY;
                     break;
             }
             
@@ -289,6 +360,55 @@ class ColorManager {
             // Return null instead of empty analysis to avoid caching bad results
             return null;
         }
+    }
+
+    /**
+     * Calculate the length of an elliptical arc
+     * @param {number} x1 - Start X
+     * @param {number} y1 - Start Y  
+     * @param {number} x2 - End X
+     * @param {number} y2 - End Y
+     * @param {number} rx - X radius
+     * @param {number} ry - Y radius
+     * @param {number} xAxisRotation - X-axis rotation in radians
+     * @param {boolean} largeArcFlag - Large arc flag
+     * @param {boolean} sweepFlag - Sweep flag
+     * @returns {number} Arc length
+     */
+    calculateArcLength(x1, y1, x2, y2, rx, ry, xAxisRotation, largeArcFlag, sweepFlag) {
+        // Handle degenerate cases
+        if (rx === 0 || ry === 0) {
+            // If either radius is 0, this is a straight line
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        if (x1 === x2 && y1 === y2) {
+            // Same start and end point
+            return 0;
+        }
+        
+        // For simplicity, use the chord length as a baseline and apply a correction factor
+        const chordLength = Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+        
+        // Estimate arc length using the average radius and chord length
+        const avgRadius = (rx + ry) / 2;
+        const chordDistance = chordLength;
+        
+        if (chordDistance >= 2 * avgRadius) {
+            // Chord is longer than diameter - use chord length
+            return chordLength;
+        }
+        
+        // Calculate the central angle approximation
+        const centralAngleApprox = 2 * Math.asin(chordDistance / (2 * avgRadius));
+        
+        // Arc length = radius * angle, but adjust for ellipse
+        const arcLength = avgRadius * centralAngleApprox;
+        
+        // Apply correction for large arc flag (if large arc, it's the longer way around)
+        return largeArcFlag ? (2 * Math.PI * avgRadius - arcLength) : arcLength;
     }
 
     /**
@@ -666,19 +786,14 @@ class ColorManager {
         const releaseCorner = this.findReleaseTransitionCorner(analysis, hostage);
         
         if (releaseCorner) {
-            // Living color until corner starts
+            // Use the full span from first point of first corner to second point of second corner
+            // This creates a gradual transition across the entire corner pair
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
             stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.livingInCaptivity });
-            
-            // Extend transition to 50% of the vertical segment after corner start
-            const verticalTransitionLength = (releaseCorner.endPercent - releaseCorner.startPercent) * 0.5;
-            const transitionEndPercent = releaseCorner.startPercent + verticalTransitionLength;
-            
-            // Transition from red to green over 50% of the vertical line
-            stops.push({ offset: `${transitionEndPercent}%`, color: releaseColor });
-            
-            // Continue with release color for rest of line
+            stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
             stops.push({ offset: '100%', color: releaseColor });
+            
+            console.log(`[GRADIENT-STOPS] ${hostage['Hebrew Name']}: 0%→${releaseCorner.startPercent.toFixed(1)}% (red), ${releaseCorner.startPercent.toFixed(1)}%→${releaseCorner.endPercent.toFixed(1)}% (transition), ${releaseCorner.endPercent.toFixed(1)}%→100% (${releaseColor})`);
         } else {
             // Fallback if no corner found - create a simple gradient for released hostages
             console.log(`[GRADIENT-FALLBACK] No corners found for released hostage ${hostage['Hebrew Name']}, creating simple gradient`);
@@ -692,8 +807,11 @@ class ColorManager {
 
     /**
      * Find the corner that represents the release transition
-     * Different hostage groups have transitions at different corners
-     * @param {Object} analysis - Path analysis
+     * Corners come in pairs: each transition has 2 corners (start/end of curve)
+     * - 0 corners: no transitions (straight line)
+     * - 2 corners: 1 transition (use first corner as transition start)
+     * - 4 corners: 2 transitions (use first corner of LAST transition for releases)
+     * @param {Object} analysis - Path analysis  
      * @param {Object} hostage - Hostage data
      * @returns {Object|null} The corner representing the release transition
      */
@@ -702,28 +820,60 @@ class ColorManager {
             return null;
         }
         
-        // For paths with only one corner, use it
-        if (analysis.corners.length === 1) {
-            return analysis.corners[0];
+        let firstCorner, secondCorner;
+        
+        if (analysis.corners.length === 2) {
+            // Single transition: from start of first corner to end of second corner
+            firstCorner = analysis.corners[0];
+            secondCorner = analysis.corners[1];
+            console.log(`[CORNER-DEBUG] 2 corners: using corners 0-1`);
+        } else if (analysis.corners.length === 4) {
+            // Two transitions: use the LAST transition pair (corners 2-3)
+            firstCorner = analysis.corners[2];
+            secondCorner = analysis.corners[3];
+            console.log(`[CORNER-DEBUG] 4 corners: using corners 2-3 (last pair)`);
+        } else {
+            // Fallback
+            firstCorner = analysis.corners[0];
+            secondCorner = analysis.corners[analysis.corners.length - 1];
+            console.log(`[CORNER-DEBUG] ${analysis.corners.length} corners: using first and last`);
         }
         
-        // For paths with multiple corners, find the most significant transition
-        // This is typically the corner with the largest Y-axis movement (vertical transition)
-        let bestCorner = analysis.corners[0];
-        let maxYChange = 0;
+        console.log(`[CORNER-DEBUG] First corner: start=${firstCorner.startPercent?.toFixed(1)}% end=${firstCorner.endPercent?.toFixed(1)}%`);
+        console.log(`[CORNER-DEBUG] Second corner: start=${secondCorner.startPercent?.toFixed(1)}% end=${secondCorner.endPercent?.toFixed(1)}%`);
         
-        analysis.corners.forEach(corner => {
-            const yChange = Math.abs(corner.endY - corner.startY);
-            if (yChange > maxYChange) {
-                maxYChange = yChange;
-                bestCorner = corner;
-            }
-        });
+        // Calculate focused transition around the vertical segments
+        // Use a tighter span - from start of first corner to end of first corner, 
+        // then from start of second corner to end of second corner
+        const firstVerticalStart = firstCorner.startPercent;
+        const firstVerticalEnd = firstCorner.endPercent;
+        const secondVerticalStart = secondCorner.startPercent; 
+        const secondVerticalEnd = secondCorner.endPercent;
         
-        // Log the decision for debugging
-        console.log(`[CORNER-SELECTION] ${hostage['Hebrew Name']}: Found ${analysis.corners.length} corners, selected corner with ${maxYChange.toFixed(1)}px Y-change at ${bestCorner.startPercent.toFixed(1)}%-${bestCorner.endPercent.toFixed(1)}%`);
+        // For gradient, use the middle of the transition zone
+        const transitionStartPercent = firstVerticalStart;
+        const transitionEndPercent = secondVerticalEnd;
         
-        return bestCorner;
+        // Special debug for comparison cases
+        const isComparisonCase = hostage['Hebrew Name'].includes('שני גורן') || hostage['Hebrew Name'].includes('עופר קלדרון');
+        if (isComparisonCase) {
+            console.log(`[COMPARE-DEBUG] === ${hostage['Hebrew Name']} ===`);
+            console.log(`[COMPARE-DEBUG] Release date: ${hostage.releaseDate}`);
+            console.log(`[COMPARE-DEBUG] Total path length: ${analysis.totalLength?.toFixed(1)}`);
+            console.log(`[COMPARE-DEBUG] All corners:`);
+            analysis.corners.forEach((corner, i) => {
+                console.log(`  Corner ${i}: ${corner.startPercent?.toFixed(1)}%-${corner.endPercent?.toFixed(1)}% (length: ${corner.startLength?.toFixed(1)}-${corner.endLength?.toFixed(1)}, startX: ${corner.startX?.toFixed(1)}, startY: ${corner.startY?.toFixed(1)}, endX: ${corner.endX?.toFixed(1)}, endY: ${corner.endY?.toFixed(1)})`);
+            });
+            console.log(`[COMPARE-DEBUG] Using corners: ${analysis.corners.length === 2 ? '0-1' : '2-3'}`);
+            console.log(`[COMPARE-DEBUG] Transition span: ${transitionStartPercent.toFixed(1)}%-${transitionEndPercent.toFixed(1)}%`);
+        }
+        
+        console.log(`[TRANSITION-PRECISE] ${hostage['Hebrew Name']}: ${analysis.corners.length} corners, transition from ${transitionStartPercent.toFixed(1)}% to ${transitionEndPercent.toFixed(1)}% of path, release date: ${hostage.releaseDate}`);
+        
+        return {
+            startPercent: transitionStartPercent,
+            endPercent: transitionEndPercent
+        };
     }
 
     /**
@@ -875,20 +1025,21 @@ class ColorManager {
      * Create SVG gradient element
      * @param {string} gradientId - Unique gradient ID
      * @param {Array} stops - Array of gradient stops
+     * @param {Object} coordinates - Optional XY coordinates for gradient positioning
      */
     createGradientElement(gradientId, stops) {
         // Debug: Log what we're creating
         console.log(`[GRADIENT-CREATE] Creating gradient: ${gradientId}`);
         console.log(`[GRADIENT-CREATE] Stops:`, stops);
         
-        // Create linear gradient
+        // Create linear gradient following the path direction (top to bottom)
         const gradient = this.defsElement
             .append('linearGradient')
             .attr('id', gradientId)
-            .attr('x1', '100%')  // RTL: Start from right
-            .attr('y1', '0%')
-            .attr('x2', '0%')    // RTL: End at left
-            .attr('y2', '0%');
+            .attr('x1', '0%')    // Same X position
+            .attr('y1', '0%')    // Start from top
+            .attr('x2', '0%')    // Same X position  
+            .attr('y2', '100%'); // End at bottom
         
         // Add stops with debugging
         stops.forEach((stop, index) => {
