@@ -26,7 +26,6 @@ class ColorManager {
         };
         
         // Debug: Log colors to verify
-        console.log('[COLOR-MANAGER] Colors initialized:', this.colors);
         
         // Gradient definitions storage
         this.gradientDefs = new Map();
@@ -49,7 +48,6 @@ class ColorManager {
         }
         
         this.defsElement = defs;
-        console.log('Color Manager initialized');
     }
 
     /**
@@ -84,7 +82,6 @@ class ColorManager {
         // Debug: Log all command types to see if we're missing any
         const commandTypes = [...new Set(commands.map(cmd => cmd.type))];
         if (commandTypes.includes('A')) {
-            console.log(`[PATH-DEBUG] Found ARC commands in path! Types: ${commandTypes.join(', ')}`);
         }
         
         commands.forEach((cmd, index) => {
@@ -325,7 +322,6 @@ class ColorManager {
                     break;
                     
                 default:
-                    console.log(`[PATH-WARNING] Unhandled path command: ${cmd.type}`, cmd);
                     segment.length = 0; // Skip unhandled commands
                     segment.endX = currentX;
                     segment.endY = currentY;
@@ -532,11 +528,9 @@ class ColorManager {
      * @returns {string} Gradient ID to use
      */
     createGradientForHostage(hostage, pathString) {
-        console.log(`[GRADIENT-START] ${hostage['Hebrew Name']}: Creating gradient with pathString:`, pathString?.substring(0, 100) + '...');
         
         const analysis = this.analyzePath(pathString);
         if (!analysis) {
-            console.warn(`[GRADIENT-FIX] No path analysis for ${hostage['Hebrew Name']}, creating fallback gradient`);
             // Create a simple fallback gradient anyway
             const fallbackStops = [
                 { offset: '0%', color: this.colors.livingInCaptivity },
@@ -546,22 +540,8 @@ class ColorManager {
             this.createGradientElement(fallbackGradientId, fallbackStops);
             return fallbackGradientId;
         }
-        
-        console.log(`[GRADIENT-ANALYSIS] ${hostage['Hebrew Name']}: Analysis segments:`, analysis.segments?.length, 'corners:', analysis.corners?.length);
-        
         // Determine hostage journey type
         const journeyType = this.determineJourneyType(hostage);
-        
-        
-        // Debug logging for all hostages to identify color issues
-        console.log(`[GRADIENT-DEBUG] ${hostage['Hebrew Name']}:`, {
-            journeyType,
-            finalLane: hostage.finalLane,
-            currentStatus: hostage['Current Status'],
-            corners: analysis.corners.length,
-            transitions: analysis.transitions.length,
-            releaseColor: this.getReleaseColor(hostage)
-        });
         
         // Generate unique gradient ID - sanitize special characters for valid SVG IDs
         const sanitizedName = hostage['Hebrew Name']?.replace(/\s+/g, '-').replace(/'/g, '').replace(/[^\w\-א-ת]/g, '') || 'unknown';
@@ -616,10 +596,8 @@ class ColorManager {
         const processedStops = this.processGradientStopsForDirection(gradientStops, analysis, hostage);
         
         // Create the gradient element with processed stops
-        console.log(`[GRADIENT-FINAL] ${hostage['Hebrew Name']}: Gradient stops:`, processedStops.length);
         this.createGradientElement(gradientId, processedStops, transitionInfo);
         
-        console.log(`[GRADIENT-SUCCESS] ${hostage['Hebrew Name']}: Created gradient ${gradientId}`);
         return gradientId;
     }
 
@@ -819,10 +797,8 @@ class ColorManager {
             stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
             stops.push({ offset: '100%', color: releaseColor });
             
-            console.log(`[GRADIENT-STOPS] ${hostage['Hebrew Name']}: 0%→${releaseCorner.startPercent.toFixed(1)}% (red), ${releaseCorner.startPercent.toFixed(1)}%→${releaseCorner.endPercent.toFixed(1)}% (transition), ${releaseCorner.endPercent.toFixed(1)}%→100% (${releaseColor})`);
         } else {
             // Fallback if no corner found - create a simple gradient for released hostages
-            console.log(`[GRADIENT-FALLBACK] No corners found for released hostage ${hostage['Hebrew Name']}, creating simple gradient`);
             stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
             stops.push({ offset: '50%', color: this.colors.livingInCaptivity });
             stops.push({ offset: '100%', color: releaseColor });
@@ -847,17 +823,12 @@ class ColorManager {
         const isRightToLeft = coordinates.startX > coordinates.endX;
         
         if (isRightToLeft) {
-            console.log(`[RTL-FLIP] ${hostage['Hebrew Name']}: Flipping gradient stops for right-to-left path`);
             
             // Flip the percentages and reverse colors
             const flippedStops = stops.map(stop => ({
                 ...stop,
                 offset: `${100 - parseFloat(stop.offset.replace('%', ''))}%`
             })).reverse();
-            
-            console.log(`[RTL-FLIP] Original stops:`, stops.map(s => s.offset));
-            console.log(`[RTL-FLIP] Flipped stops:`, flippedStops.map(s => s.offset));
-            
             return flippedStops;
         }
         
@@ -884,9 +855,6 @@ class ColorManager {
             transitionStart = analysis.corners[0].startPercent;
             transitionEnd = analysis.corners[analysis.corners.length - 1].endPercent;
         }
-        
-        console.log(`[TRANSITION-INFO] ${hostage['Hebrew Name']}: Transitions span ${transitionStart.toFixed(1)}% to ${transitionEnd.toFixed(1)}%`);
-        
         return {
             startPercent: transitionStart,
             endPercent: transitionEnd,
@@ -941,9 +909,6 @@ class ColorManager {
             endX: endX,
             endY: endY
         };
-        
-        console.log(`[PATH-COORDINATES] ${hostage['Hebrew Name']}: Full path gradient from (${coordinates.startX.toFixed(1)}, ${coordinates.startY.toFixed(1)}) to (${coordinates.endX.toFixed(1)}, ${coordinates.endY.toFixed(1)})`);
-        
         return coordinates;
     }
 
@@ -968,22 +933,15 @@ class ColorManager {
             // Single transition: from start of first corner to end of second corner
             firstCorner = analysis.corners[0];
             secondCorner = analysis.corners[1];
-            console.log(`[CORNER-DEBUG] 2 corners: using corners 0-1`);
         } else if (analysis.corners.length === 4) {
             // Two transitions: use the LAST transition pair (corners 2-3)
             firstCorner = analysis.corners[2];
             secondCorner = analysis.corners[3];
-            console.log(`[CORNER-DEBUG] 4 corners: using corners 2-3 (last pair)`);
         } else {
             // Fallback
             firstCorner = analysis.corners[0];
             secondCorner = analysis.corners[analysis.corners.length - 1];
-            console.log(`[CORNER-DEBUG] ${analysis.corners.length} corners: using first and last`);
         }
-        
-        console.log(`[CORNER-DEBUG] First corner: start=${firstCorner.startPercent?.toFixed(1)}% end=${firstCorner.endPercent?.toFixed(1)}%`);
-        console.log(`[CORNER-DEBUG] Second corner: start=${secondCorner.startPercent?.toFixed(1)}% end=${secondCorner.endPercent?.toFixed(1)}%`);
-        
         // Calculate focused transition around the vertical segments
         // Use a tighter span - from start of first corner to end of first corner, 
         // then from start of second corner to end of second corner
@@ -999,19 +957,9 @@ class ColorManager {
         // Special debug for comparison cases
         const isComparisonCase = hostage['Hebrew Name'].includes('שני גורן') || hostage['Hebrew Name'].includes('עופר קלדרון');
         if (isComparisonCase) {
-            console.log(`[COMPARE-DEBUG] === ${hostage['Hebrew Name']} ===`);
-            console.log(`[COMPARE-DEBUG] Release date: ${hostage.releaseDate}`);
-            console.log(`[COMPARE-DEBUG] Total path length: ${analysis.totalLength?.toFixed(1)}`);
-            console.log(`[COMPARE-DEBUG] All corners:`);
             analysis.corners.forEach((corner, i) => {
-                console.log(`  Corner ${i}: ${corner.startPercent?.toFixed(1)}%-${corner.endPercent?.toFixed(1)}% (length: ${corner.startLength?.toFixed(1)}-${corner.endLength?.toFixed(1)}, startX: ${corner.startX?.toFixed(1)}, startY: ${corner.startY?.toFixed(1)}, endX: ${corner.endX?.toFixed(1)}, endY: ${corner.endY?.toFixed(1)})`);
             });
-            console.log(`[COMPARE-DEBUG] Using corners: ${analysis.corners.length === 2 ? '0-1' : '2-3'}`);
-            console.log(`[COMPARE-DEBUG] Transition span: ${transitionStartPercent.toFixed(1)}%-${transitionEndPercent.toFixed(1)}%`);
         }
-        
-        console.log(`[TRANSITION-PRECISE] ${hostage['Hebrew Name']}: ${analysis.corners.length} corners, transition from ${transitionStartPercent.toFixed(1)}% to ${transitionEndPercent.toFixed(1)}% of path, release date: ${hostage.releaseDate}`);
-        
         return {
             startPercent: transitionStartPercent,
             endPercent: transitionEndPercent,
@@ -1088,9 +1036,6 @@ class ColorManager {
      */
     createStillCaptiveGradient(analysis, hostage) {
         // Debug log
-        console.log(`[STILL-CAPTIVE] Creating gradient for ${hostage['Hebrew Name']}`);
-        console.log(`[STILL-CAPTIVE] Current Status: ${hostage['Current Status']}`);
-        console.log(`[STILL-CAPTIVE] Analysis corners: ${analysis.corners.length}`);
         
         // Ensure we have valid colors
         const mustardColor = this.colors.livingInCaptivity || '#DAA520';
@@ -1101,12 +1046,8 @@ class ColorManager {
         const isDead = hostage.deathDate || 
                        hostage['Current Status']?.toLowerCase().includes('deceased') ||
                        hostage.finalLane === 'kidnapped-deceased';
-        
-        console.log(`[STILL-CAPTIVE] Is dead: ${isDead}`);
-        
         // Check if hostage has been in same status from beginning (no transitions)
         const hasTransitions = analysis.corners.length > 0;
-        console.log(`[STILL-CAPTIVE] Has transitions: ${hasTransitions}`);
         
         if (isDead && hasTransitions) {
             // Has death transition - create gradient
@@ -1120,7 +1061,6 @@ class ColorManager {
                 { offset: '100%', color: grayColor }
             ];
             
-            console.log(`[STILL-CAPTIVE] Death transition stops:`, stops);
             return stops;
         } else if (isDead) {
             // Dead but no transitions - SOLID COLOR
@@ -1129,7 +1069,6 @@ class ColorManager {
                 { offset: '100%', color: grayColor }
             ];
             
-            console.log(`[STILL-CAPTIVE] Dead (solid color) stops:`, stops);
             return stops;
         } else {
             // Still alive in captivity - SOLID COLOR
@@ -1138,7 +1077,6 @@ class ColorManager {
                 { offset: '100%', color: mustardColor }
             ];
             
-            console.log(`[STILL-CAPTIVE] Alive (solid color) stops:`, stops);
             return stops;
         }
     }
@@ -1159,13 +1097,6 @@ class ColorManager {
             color = this.colors.releasedDeal;
         }
         
-        // Debug logging for color assignment
-        console.log(`[COLOR-ASSIGNMENT] ${hostage['Hebrew Name']}:`, {
-            circumstances: hostage['Release/Death Circumstances'],
-            finalLane: hostage.finalLane,
-            assignedColor: color,
-            isMilitary: circumstances.includes('military') || circumstances.includes('operation') || circumstances.includes('rescue')
-        });
         
         return color;
     }
@@ -1178,8 +1109,6 @@ class ColorManager {
      */
     createGradientElement(gradientId, stops, transitionInfo = null) {
         // Debug: Log what we're creating
-        console.log(`[GRADIENT-CREATE] Creating gradient: ${gradientId}`);
-        console.log(`[GRADIENT-CREATE] Stops:`, stops);
         
         // Create linear gradient with coordinates if provided, otherwise use default
         const gradient = this.defsElement
@@ -1194,12 +1123,8 @@ class ColorManager {
             .attr('x2', '100%')  // Always end at end of path
             .attr('y2', '0%')    
             .attr('gradientUnits', 'objectBoundingBox');
-            
-        console.log(`[GRADIENT-VECTOR] Using full path vector (0% to 100%), positioning controlled by gradient stops`);
-        
         // Add stops with debugging
         stops.forEach((stop, index) => {
-            console.log(`[GRADIENT-CREATE] Stop ${index}: ${stop.offset} = ${stop.color}`);
             gradient.append('stop')
                 .attr('offset', stop.offset)
                 .attr('stop-color', stop.color)
@@ -1222,9 +1147,19 @@ class ColorManager {
      */
     applyGradientToPath(pathElement, hostage, pathString) {
         try {
-            // Debug logging for specific hostages
-            if (hostage['Hebrew Name'] === 'עפרי ברודץ\'' || hostage['Hebrew Name'] === 'אוהד יהלומי') {
-                console.log(`[APPLY-DEBUG] ${hostage['Hebrew Name']} - Starting gradient application`);
+            // First check if this path actually needs a gradient
+            const analysis = this.analyzePath(pathString);
+            const hasTransitions = analysis && analysis.corners.length > 0;
+            
+            // If no transitions, apply solid color directly
+            if (!hasTransitions) {
+                const solidColor = this.getFallbackColor(hostage);
+                pathElement
+                    .style('stroke', solidColor)
+                    .style('fill', 'none');
+                
+                console.warn(`[SOLID-COLOR] ${hostage['Hebrew Name']}: No transitions, applied solid color: ${solidColor}`);
+                return; // Exit early - no need for gradients
             }
             
             // Create gradient for this hostage
@@ -1241,38 +1176,25 @@ class ColorManager {
                 // Store gradient ID for reference
                 pathElement.attr('data-gradient-id', gradientId);
                 
-                
-                // Debug logging for specific hostages
-                if (hostage['Hebrew Name'] === 'עפרי ברודץ\'' || hostage['Hebrew Name'] === 'אוהד יהלומי') {
-                    console.log(`[APPLY-DEBUG] ${hostage['Hebrew Name']} - Applied gradient: ${gradientId}`);
-                }
-                
                 // CRITICAL: Verify the gradient was actually applied
                 setTimeout(() => {
                     const computedStroke = pathElement.style('stroke');
                     // Only apply fallback if stroke is completely missing or explicitly 'none'
                     // Don't override valid gradient URLs
                     if (!computedStroke || computedStroke === 'none') {
-                        console.warn(`[COLOR-DEBUG] Gradient failed for ${hostage['Hebrew Name']}, applying fallback`);
+                        console.warn(`[GRADIENT-FAILED] ${hostage['Hebrew Name']}: Gradient ${gradientId} failed to render, applying solid fallback`);
                         const fallbackColor = this.getFallbackColor(hostage);
                         pathElement.style('stroke', fallbackColor);
-                    } else if (computedStroke.includes('url(')) {
-                        console.log(`[COLOR-DEBUG] Gradient successfully applied for ${hostage['Hebrew Name']}: ${computedStroke}`);
                     }
                 }, 0);
                 
-                console.log(`[COLOR-DEBUG] Applied gradient ${gradientId} to ${hostage['Hebrew Name']}`);
             } else {
                 // Fallback to solid color
                 const fallbackColor = this.getFallbackColor(hostage);
                 pathElement.style('stroke', fallbackColor);
                 
-                // Debug logging for specific hostages
-                if (hostage['Hebrew Name'] === 'עפרי ברודץ\'' || hostage['Hebrew Name'] === 'אוהד יהלומי') {
-                    console.log(`[APPLY-DEBUG] ${hostage['Hebrew Name']} - Using fallback color: ${fallbackColor}`);
-                }
+                console.warn(`[NO-GRADIENT] ${hostage['Hebrew Name']}: No gradient created, using solid fallback color: ${fallbackColor}`);
                 
-                console.log(`[COLOR-DEBUG] Applied fallback color ${fallbackColor} to ${hostage['Hebrew Name']}`);
             }
             
             // Ensure stroke is always visible - never set to none
@@ -1327,22 +1249,14 @@ class ColorManager {
      */
     addDebugSquares(hostage, pathString, gradientId = null) {
         const targetNames = ['נגמה וייס', 'עופר קלדרון'];
-        console.log(`[DEBUG-CHECK] Checking ${hostage['Hebrew Name']} against`, targetNames);
         if (!targetNames.includes(hostage['Hebrew Name'])) {
             return; // Only debug these specific hostages
         }
-        
-        console.log(`[DEBUG-SQUARES] Adding debug squares for ${hostage['Hebrew Name']}`);
-        console.log(`[DEBUG-PATH] PathString:`, pathString);
-        
         const analysis = this.analyzePath(pathString);
         if (!analysis || !analysis.segments) {
             console.warn(`[DEBUG-SQUARES] No analysis for ${hostage['Hebrew Name']}`);
             return;
         }
-        
-        console.log(`[DEBUG-ANALYSIS] Total segments: ${analysis.segments.length}, Total length: ${analysis.totalLength}`);
-        
         // Get SVG container
         const svg = this.timeline.svg;
         
@@ -1369,7 +1283,6 @@ class ColorManager {
                 .attr('stroke-opacity', 0.9)
                 .attr('class', `debug-path-gradient debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
                 
-            console.log(`[DEBUG-GRADIENT-PATH] Applied gradient ${gradientId} to debug path for ${hostage['Hebrew Name']}`);
         }
             
         // Add name label near the start of the path
@@ -1422,7 +1335,6 @@ class ColorManager {
                     .attr('class', `debug-percent-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
                     .text(`${startPercent.toFixed(1)}%`);
                 
-                console.log(`[DEBUG-SQUARES] ${hostage['Hebrew Name']} segment ${index} start: (${segment.startX}, ${segment.startY}) at ${startPercent.toFixed(1)}%`);
             }
             
             // End point (avoid duplicates by only adding if different from next segment's start)
@@ -1454,7 +1366,6 @@ class ColorManager {
                         .attr('class', `debug-percent-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
                         .text(`${endPercent.toFixed(1)}%`);
                     
-                    console.log(`[DEBUG-SQUARES] ${hostage['Hebrew Name']} segment ${index} end: (${segment.endX}, ${segment.endY}) at ${endPercent.toFixed(1)}%`);
                 }
             }
         });
@@ -1504,7 +1415,6 @@ class ColorManager {
                     .attr('class', `debug-corner-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
                     .text(`${corner.endPercent.toFixed(1)}%`);
                 
-                console.log(`[DEBUG-SQUARES] ${hostage['Hebrew Name']} corner ${index}: (${corner.startX}, ${corner.startY}) -> (${corner.endX}, ${corner.endY}) at ${corner.startPercent.toFixed(1)}%-${corner.endPercent.toFixed(1)}%`);
             });
         }
         
@@ -1512,11 +1422,6 @@ class ColorManager {
         if (gradientId) {
             const gradientDef = this.gradientDefs.get(gradientId);
             if (gradientDef) {
-                console.log(`[ACTUAL-GRADIENT] ${hostage['Hebrew Name']} gradient:`, {
-                    id: gradientId,
-                    stops: gradientDef.stops,
-                    vectorInfo: 'Check SVG DOM for x1,y1,x2,y2 values'
-                });
                 
                 // Get actual gradient element from DOM to see its attributes
                 const gradientElement = this.defsElement.select(`#${gradientId}`);
@@ -1527,9 +1432,6 @@ class ColorManager {
                     const y2 = gradientElement.attr('y2');
                     const gradientUnits = gradientElement.attr('gradientUnits');
                     
-                    console.log(`[ACTUAL-GRADIENT-VECTOR] ${hostage['Hebrew Name']}:`, {
-                        x1, y1, x2, y2, gradientUnits
-                    });
                     
                     // Convert gradient vector percentages to actual coordinates for visualization
                     if (gradientUnits === 'objectBoundingBox') {
@@ -1653,34 +1555,8 @@ class ColorManager {
         const analysis = this.analyzePath(pathString);
         const journeyType = this.determineJourneyType(hostage);
         
-        console.log(`[COLOR-DEBUG] ${hostage['Hebrew Name']}:`, {
-            journeyType,
-            corners: analysis?.corners.length || 0,
-            transitions: analysis?.transitions.length || 0,
-            totalLength: analysis?.totalLength || 0,
-            hasDeathDate: !!hostage.deathDate,
-            hasReleaseDate: !!hostage.releaseDate,
-            finalLane: hostage.finalLane,
-            path: hostage.path?.map(p => `${p.lane}@${p.event}`)
-        });
         
         if (analysis) {
-            console.log('[COLOR-DEBUG] Path analysis:', {
-                totalLength: analysis.totalLength,
-                segments: analysis.segments.length,
-                corners: analysis.corners.map(c => ({
-                    start: `${c.startPercent.toFixed(1)}%`,
-                    end: `${c.endPercent.toFixed(1)}%`,
-                    direction: c.direction,
-                    isTransition: c.isTransition
-                })),
-                transitions: analysis.transitions.map(t => ({
-                    type: t.type,
-                    start: `${t.startPercent.toFixed(1)}%`,
-                    end: `${t.endPercent.toFixed(1)}%`,
-                    direction: t.direction
-                }))
-            });
         }
     }
     
@@ -1689,10 +1565,8 @@ class ColorManager {
      * @param {Array} hostages - Array of hostages with paths
      */
     debugAll(hostages) {
-        console.log('[COLOR-DEBUG] Analyzing all hostages...');
         hostages.forEach((hostage, index) => {
             if (index < 5) { // Limit to first 5 for debugging
-                console.log(`[COLOR-DEBUG] Hostage ${index + 1}:`, hostage['Hebrew Name']);
                 this.debugGradient(hostage, hostage.path);
             }
         });
@@ -1703,18 +1577,10 @@ class ColorManager {
      * @param {Object} hostage - Hostage data
      */
     debugHostageStatus(hostage) {
-        console.log(`[COLOR-DEBUG] Hostage: ${hostage['Hebrew Name']}`);
-        console.log(`  Current Status: ${hostage['Current Status']}`);
-        console.log(`  Final Lane: ${hostage.finalLane}`);
-        console.log(`  Has Death Date: ${!!hostage.deathDate}`);
-        console.log(`  Has Release Date: ${!!hostage.releaseDate}`);
-        console.log(`  Journey Type: ${this.determineJourneyType(hostage)}`);
         
         const pathString = hostage.path ? 'Has path' : 'No path';
-        console.log(`  Path: ${pathString}`);
         
         if (hostage['Current Status']?.includes('Held in Gaza')) {
-            console.log(`  >>> Still in captivity!`);
         }
     }
 }
