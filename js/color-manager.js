@@ -12,12 +12,12 @@ class ColorManager {
         // Color definitions - ALIGNED WITH CONFIG.JS
         this.colors = {
             // Base colors
-            livingInCaptivity: '#ef4444', // Red for kidnapped living (from config)
+            livingInCaptivity: '#DAA520', // Mustard orange for kidnapped living (from config)
             deadInCaptivity: '#7f1d1d', // Dark red for kidnapped deceased (from config)
             darkRed: '#8B0000', // Dark red for death transitions
             
             // Release colors - MATCH CONFIG.JS EXACTLY
-            releasedDeal: '#22c55e', // Green for released deal (from config)
+            releasedDeal: '#f0fdf4', // Very light green for released deal (almost white)
             releasedMilitary: '#3b82f6', // Blue for released military (from config)
             
             // Special states
@@ -100,6 +100,8 @@ class ColorManager {
                 case 'M': // Move to
                     startX = currentX = cmd.x;
                     startY = currentY = cmd.y;
+                    segment.startX = currentX;  // Fix: Update segment start to match move destination
+                    segment.startY = currentY;
                     segment.endX = currentX;
                     segment.endY = currentY;
                     segment.length = 0;
@@ -530,11 +532,22 @@ class ColorManager {
      * @returns {string} Gradient ID to use
      */
     createGradientForHostage(hostage, pathString) {
+        console.log(`[GRADIENT-START] ${hostage['Hebrew Name']}: Creating gradient with pathString:`, pathString?.substring(0, 100) + '...');
+        
         const analysis = this.analyzePath(pathString);
         if (!analysis) {
-            console.warn(`[GRADIENT-FIX] No path analysis for ${hostage['Hebrew Name']}`);
-            return null;
+            console.warn(`[GRADIENT-FIX] No path analysis for ${hostage['Hebrew Name']}, creating fallback gradient`);
+            // Create a simple fallback gradient anyway
+            const fallbackStops = [
+                { offset: '0%', color: this.colors.livingInCaptivity },
+                { offset: '100%', color: this.colors.livingInCaptivity }
+            ];
+            const fallbackGradientId = `gradient-fallback-${this.gradientIdCounter++}`;
+            this.createGradientElement(fallbackGradientId, fallbackStops);
+            return fallbackGradientId;
         }
+        
+        console.log(`[GRADIENT-ANALYSIS] ${hostage['Hebrew Name']}: Analysis segments:`, analysis.segments?.length, 'corners:', analysis.corners?.length);
         
         // Determine hostage journey type
         const journeyType = this.determineJourneyType(hostage);
@@ -556,6 +569,10 @@ class ColorManager {
         
         // Create gradient based on journey type
         let gradientStops = [];
+        let coordinates = null;
+        
+        // Get transition corner data to determine gradient positioning
+        const transitionInfo = this.getTransitionInfo(analysis, hostage, journeyType);
         
         switch (journeyType) {
             case 'dead-from-start':
@@ -575,11 +592,6 @@ class ColorManager {
                 break;
                 
             case 'still-captive':
-                // Check if we should use solid color instead of gradient
-                if (analysis.corners.length === 0) {
-                    console.log(`[SOLID-COLOR] Using solid color for ${hostage['Hebrew Name']} (no transitions)`);
-                    return null; // Return null to trigger solid color fallback
-                }
                 gradientStops = this.createStillCaptiveGradient(analysis, hostage);
                 break;
                 
@@ -591,9 +603,23 @@ class ColorManager {
                 ];
         }
         
-        // Create the gradient element
-        this.createGradientElement(gradientId, gradientStops);
+        // Ensure we have gradient stops
+        if (!gradientStops || gradientStops.length === 0) {
+            console.warn(`[GRADIENT-FALLBACK] ${hostage['Hebrew Name']}: No gradient stops, creating fallback gradient`);
+            gradientStops = [
+                { offset: '0%', color: this.colors.livingInCaptivity },
+                { offset: '100%', color: this.colors.livingInCaptivity }
+            ];
+        }
         
+        // Process gradient stops for path direction (flip if right-to-left)
+        const processedStops = this.processGradientStopsForDirection(gradientStops, analysis, hostage);
+        
+        // Create the gradient element with processed stops
+        console.log(`[GRADIENT-FINAL] ${hostage['Hebrew Name']}: Gradient stops:`, processedStops.length);
+        this.createGradientElement(gradientId, processedStops, transitionInfo);
+        
+        console.log(`[GRADIENT-SUCCESS] ${hostage['Hebrew Name']}: Created gradient ${gradientId}`);
         return gradientId;
     }
 
@@ -806,6 +832,122 @@ class ColorManager {
     }
 
     /**
+     * Check if path flows right-to-left and flip gradient stops if needed
+     * @param {Array} stops - Original gradient stops
+     * @param {Object} analysis - Path analysis
+     * @param {Object} hostage - Hostage data
+     * @returns {Array} Processed gradient stops (flipped if RTL)
+     */
+    processGradientStopsForDirection(stops, analysis, hostage) {
+        const coordinates = this.getPathGradientCoordinates(analysis, hostage);
+        if (!coordinates) {
+            return stops; // Return original stops if no coordinates
+        }
+        
+        const isRightToLeft = coordinates.startX > coordinates.endX;
+        
+        if (isRightToLeft) {
+            console.log(`[RTL-FLIP] ${hostage['Hebrew Name']}: Flipping gradient stops for right-to-left path`);
+            
+            // Flip the percentages and reverse colors
+            const flippedStops = stops.map(stop => ({
+                ...stop,
+                offset: `${100 - parseFloat(stop.offset.replace('%', ''))}%`
+            })).reverse();
+            
+            console.log(`[RTL-FLIP] Original stops:`, stops.map(s => s.offset));
+            console.log(`[RTL-FLIP] Flipped stops:`, flippedStops.map(s => s.offset));
+            
+            return flippedStops;
+        }
+        
+        return stops; // Return original stops for LTR paths
+    }
+
+    /**
+     * Get transition information for gradient positioning
+     * @param {Object} analysis - Path analysis
+     * @param {Object} hostage - Hostage data  
+     * @param {string} journeyType - Journey type
+     * @returns {Object|null} Transition info with start/end percentages
+     */
+    getTransitionInfo(analysis, hostage, journeyType) {
+        if (!analysis || !analysis.corners || analysis.corners.length === 0) {
+            return null;
+        }
+        
+        let transitionStart = 0;  // Start of first transition
+        let transitionEnd = 100;  // End of last transition
+        
+        // Find the actual transition boundaries based on corners
+        if (analysis.corners.length > 0) {
+            transitionStart = analysis.corners[0].startPercent;
+            transitionEnd = analysis.corners[analysis.corners.length - 1].endPercent;
+        }
+        
+        console.log(`[TRANSITION-INFO] ${hostage['Hebrew Name']}: Transitions span ${transitionStart.toFixed(1)}% to ${transitionEnd.toFixed(1)}%`);
+        
+        return {
+            startPercent: transitionStart,
+            endPercent: transitionEnd,
+            hasTransitions: analysis.corners.length > 0
+        };
+    }
+
+    /**
+     * Get gradient coordinates spanning the full path from start to end
+     * @param {Object} analysis - Path analysis
+     * @param {Object} hostage - Hostage data
+     * @returns {Object|null} Coordinates object with startX, startY, endX, endY
+     */
+    getPathGradientCoordinates(analysis, hostage) {
+        if (!analysis) {
+            console.warn(`[PATH-COORDINATES] ${hostage['Hebrew Name']}: No analysis available`);
+            return null;
+        }
+        
+        if (!analysis.segments || analysis.segments.length === 0) {
+            console.warn(`[PATH-COORDINATES] ${hostage['Hebrew Name']}: No segments found`);
+            return null;
+        }
+        
+        // Get the absolute start point of the path (first segment start)
+        const firstSegment = analysis.segments[0];
+        const startX = firstSegment.startX;
+        const startY = firstSegment.startY;
+        
+        // Get the absolute end point of the path (last segment end)
+        const lastSegment = analysis.segments[analysis.segments.length - 1];
+        const endX = lastSegment.endX;
+        const endY = lastSegment.endY;
+        
+        // Validate coordinates
+        if (isNaN(startX) || isNaN(startY) || isNaN(endX) || isNaN(endY)) {
+            console.warn(`[PATH-COORDINATES] ${hostage['Hebrew Name']}: Invalid coordinates`, {
+                startX, startY, endX, endY
+            });
+            return null;
+        }
+        
+        // Check if start and end points are the same (would create invalid gradient)
+        if (Math.abs(startX - endX) < 0.1 && Math.abs(startY - endY) < 0.1) {
+            console.warn(`[PATH-COORDINATES] ${hostage['Hebrew Name']}: Start and end points are too close, using fallback`);
+            return null;
+        }
+        
+        const coordinates = {
+            startX: startX,
+            startY: startY, 
+            endX: endX,
+            endY: endY
+        };
+        
+        console.log(`[PATH-COORDINATES] ${hostage['Hebrew Name']}: Full path gradient from (${coordinates.startX.toFixed(1)}, ${coordinates.startY.toFixed(1)}) to (${coordinates.endX.toFixed(1)}, ${coordinates.endY.toFixed(1)})`);
+        
+        return coordinates;
+    }
+
+    /**
      * Find the corner that represents the release transition
      * Corners come in pairs: each transition has 2 corners (start/end of curve)
      * - 0 corners: no transitions (straight line)
@@ -872,7 +1014,14 @@ class ColorManager {
         
         return {
             startPercent: transitionStartPercent,
-            endPercent: transitionEndPercent
+            endPercent: transitionEndPercent,
+            // Add actual coordinates for gradient positioning
+            startX: firstCorner.startX,
+            startY: firstCorner.startY,
+            endX: secondCorner.endX,
+            endY: secondCorner.endY,
+            firstCorner: firstCorner,
+            secondCorner: secondCorner
         };
     }
 
@@ -1025,21 +1174,28 @@ class ColorManager {
      * Create SVG gradient element
      * @param {string} gradientId - Unique gradient ID
      * @param {Array} stops - Array of gradient stops
-     * @param {Object} coordinates - Optional XY coordinates for gradient positioning
+     * @param {Object} transitionInfo - Transition positioning info
      */
-    createGradientElement(gradientId, stops) {
+    createGradientElement(gradientId, stops, transitionInfo = null) {
         // Debug: Log what we're creating
         console.log(`[GRADIENT-CREATE] Creating gradient: ${gradientId}`);
         console.log(`[GRADIENT-CREATE] Stops:`, stops);
         
-        // Create linear gradient following the path direction (top to bottom)
+        // Create linear gradient with coordinates if provided, otherwise use default
         const gradient = this.defsElement
             .append('linearGradient')
-            .attr('id', gradientId)
-            .attr('x1', '0%')    // Same X position
-            .attr('y1', '0%')    // Start from top
-            .attr('x2', '0%')    // Same X position  
-            .attr('y2', '100%'); // End at bottom
+            .attr('id', gradientId);
+            
+        // ALWAYS use 0% to 100% for the gradient vector with objectBoundingBox
+        // The gradient positioning is controlled by the STOPS, not the vector
+        gradient
+            .attr('x1', '0%')    // Always start at beginning of path
+            .attr('y1', '0%')    
+            .attr('x2', '100%')  // Always end at end of path
+            .attr('y2', '0%')    
+            .attr('gradientUnits', 'objectBoundingBox');
+            
+        console.log(`[GRADIENT-VECTOR] Using full path vector (0% to 100%), positioning controlled by gradient stops`);
         
         // Add stops with debugging
         stops.forEach((stop, index) => {
@@ -1066,7 +1222,6 @@ class ColorManager {
      */
     applyGradientToPath(pathElement, hostage, pathString) {
         try {
-            
             // Debug logging for specific hostages
             if (hostage['Hebrew Name'] === 'עפרי ברודץ\'' || hostage['Hebrew Name'] === 'אוהד יהלומי') {
                 console.log(`[APPLY-DEBUG] ${hostage['Hebrew Name']} - Starting gradient application`);
@@ -1074,6 +1229,8 @@ class ColorManager {
             
             // Create gradient for this hostage
             const gradientId = this.createGradientForHostage(hostage, pathString);
+            
+            // Debug squares removed - gradient positioning now fixed
             
             if (gradientId) {
                 // Apply gradient as stroke
@@ -1163,13 +1320,314 @@ class ColorManager {
     }
 
     /**
+     * Debug: Add purple squares at path points for specific hostages
+     * @param {Object} hostage - Hostage data
+     * @param {string} pathString - SVG path string
+     * @param {string} gradientId - The actual gradient ID that was created
+     */
+    addDebugSquares(hostage, pathString, gradientId = null) {
+        const targetNames = ['נגמה וייס', 'עופר קלדרון'];
+        console.log(`[DEBUG-CHECK] Checking ${hostage['Hebrew Name']} against`, targetNames);
+        if (!targetNames.includes(hostage['Hebrew Name'])) {
+            return; // Only debug these specific hostages
+        }
+        
+        console.log(`[DEBUG-SQUARES] Adding debug squares for ${hostage['Hebrew Name']}`);
+        console.log(`[DEBUG-PATH] PathString:`, pathString);
+        
+        const analysis = this.analyzePath(pathString);
+        if (!analysis || !analysis.segments) {
+            console.warn(`[DEBUG-SQUARES] No analysis for ${hostage['Hebrew Name']}`);
+            return;
+        }
+        
+        console.log(`[DEBUG-ANALYSIS] Total segments: ${analysis.segments.length}, Total length: ${analysis.totalLength}`);
+        
+        // Get SVG container
+        const svg = this.timeline.svg;
+        
+        // Clear any previous debug markers for this hostage
+        svg.selectAll(`.debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`).remove();
+        
+        // First, highlight the path itself with a thick colored outline
+        const pathColor = hostage['Hebrew Name'] === 'נגמה וייס' ? '#ff6b6b' : '#4ecdc4'; // Red for Nechama, Teal for Ofer
+        const debugPath = svg.append('path')
+            .attr('d', pathString)
+            .attr('fill', 'none')
+            .attr('stroke', pathColor)
+            .attr('stroke-width', 4)
+            .attr('stroke-opacity', 0.7)
+            .attr('class', `debug-path-highlight debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+            
+        // If we have a gradient, also create a second debug path with the actual gradient applied
+        if (gradientId) {
+            svg.append('path')
+                .attr('d', pathString)
+                .attr('fill', 'none')
+                .attr('stroke', `url(#${gradientId})`)  // Use the actual gradient
+                .attr('stroke-width', 8)  // Thicker to show gradient effect
+                .attr('stroke-opacity', 0.9)
+                .attr('class', `debug-path-gradient debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+                
+            console.log(`[DEBUG-GRADIENT-PATH] Applied gradient ${gradientId} to debug path for ${hostage['Hebrew Name']}`);
+        }
+            
+        // Add name label near the start of the path
+        if (analysis.segments.length > 0) {
+            const firstSegment = analysis.segments[0];
+            svg.append('text')
+                .attr('x', firstSegment.startX + 10)
+                .attr('y', firstSegment.startY - 10)
+                .attr('fill', pathColor)
+                .attr('font-size', '14px')
+                .attr('font-weight', 'bold')
+                .attr('class', `debug-name-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                .text(hostage['Hebrew Name']);
+                
+            // Add label for gradient path if present
+            if (gradientId) {
+                svg.append('text')
+                    .attr('x', firstSegment.startX + 10)
+                    .attr('y', firstSegment.startY + 25)
+                    .attr('fill', 'purple')
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .attr('class', `debug-gradient-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                    .text(`GRADIENT: ${gradientId}`);
+            }
+        }
+        
+        // Add squares for all segment start and end points with percentage labels
+        analysis.segments.forEach((segment, index) => {
+            // Start point
+            if (segment.startX !== undefined && segment.startY !== undefined) {
+                svg.append('rect')
+                    .attr('x', segment.startX - 2)
+                    .attr('y', segment.startY - 2)
+                    .attr('width', 4)
+                    .attr('height', 4)
+                    .attr('fill', 'purple')
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', 0.5)
+                    .attr('class', `debug-square debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+                
+                // Add percentage label for start point
+                const startPercent = (segment.startLength / analysis.totalLength) * 100;
+                svg.append('text')
+                    .attr('x', segment.startX + 6)
+                    .attr('y', segment.startY - 2)
+                    .attr('fill', 'black')
+                    .attr('font-size', '10px')
+                    .attr('font-weight', 'bold')
+                    .attr('class', `debug-percent-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                    .text(`${startPercent.toFixed(1)}%`);
+                
+                console.log(`[DEBUG-SQUARES] ${hostage['Hebrew Name']} segment ${index} start: (${segment.startX}, ${segment.startY}) at ${startPercent.toFixed(1)}%`);
+            }
+            
+            // End point (avoid duplicates by only adding if different from next segment's start)
+            if (segment.endX !== undefined && segment.endY !== undefined) {
+                const nextSegment = analysis.segments[index + 1];
+                const isDifferentFromNext = !nextSegment || 
+                    Math.abs(segment.endX - nextSegment.startX) > 0.1 || 
+                    Math.abs(segment.endY - nextSegment.startY) > 0.1;
+                    
+                if (isDifferentFromNext) {
+                    svg.append('rect')
+                        .attr('x', segment.endX - 2)
+                        .attr('y', segment.endY - 2)
+                        .attr('width', 4)
+                        .attr('height', 4)
+                        .attr('fill', 'purple')
+                        .attr('stroke', 'white')
+                        .attr('stroke-width', 0.5)
+                        .attr('class', `debug-square debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+                    
+                    // Add percentage label for end point
+                    const endPercent = (segment.endLength / analysis.totalLength) * 100;
+                    svg.append('text')
+                        .attr('x', segment.endX + 6)
+                        .attr('y', segment.endY - 2)
+                        .attr('fill', 'black')
+                        .attr('font-size', '10px')
+                        .attr('font-weight', 'bold')
+                        .attr('class', `debug-percent-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                        .text(`${endPercent.toFixed(1)}%`);
+                    
+                    console.log(`[DEBUG-SQUARES] ${hostage['Hebrew Name']} segment ${index} end: (${segment.endX}, ${segment.endY}) at ${endPercent.toFixed(1)}%`);
+                }
+            }
+        });
+        
+        // Add special markers for corners
+        if (analysis.corners) {
+            analysis.corners.forEach((corner, index) => {
+                // Corner start - red square
+                svg.append('rect')
+                    .attr('x', corner.startX - 3)
+                    .attr('y', corner.startY - 3)
+                    .attr('width', 6)
+                    .attr('height', 6)
+                    .attr('fill', 'red')
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', 1)
+                    .attr('class', `debug-corner debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+                
+                // Corner start percentage label
+                svg.append('text')
+                    .attr('x', corner.startX + 8)
+                    .attr('y', corner.startY + 2)
+                    .attr('fill', 'red')
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .attr('class', `debug-corner-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                    .text(`${corner.startPercent.toFixed(1)}%`);
+                
+                // Corner end - green square  
+                svg.append('rect')
+                    .attr('x', corner.endX - 3)
+                    .attr('y', corner.endY - 3)
+                    .attr('width', 6)
+                    .attr('height', 6)
+                    .attr('fill', 'green')
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', 1)
+                    .attr('class', `debug-corner debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+                
+                // Corner end percentage label
+                svg.append('text')
+                    .attr('x', corner.endX + 8)
+                    .attr('y', corner.endY + 2)
+                    .attr('fill', 'green')
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .attr('class', `debug-corner-label debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                    .text(`${corner.endPercent.toFixed(1)}%`);
+                
+                console.log(`[DEBUG-SQUARES] ${hostage['Hebrew Name']} corner ${index}: (${corner.startX}, ${corner.startY}) -> (${corner.endX}, ${corner.endY}) at ${corner.startPercent.toFixed(1)}%-${corner.endPercent.toFixed(1)}%`);
+            });
+        }
+        
+        // Show actual gradient information if gradient was created
+        if (gradientId) {
+            const gradientDef = this.gradientDefs.get(gradientId);
+            if (gradientDef) {
+                console.log(`[ACTUAL-GRADIENT] ${hostage['Hebrew Name']} gradient:`, {
+                    id: gradientId,
+                    stops: gradientDef.stops,
+                    vectorInfo: 'Check SVG DOM for x1,y1,x2,y2 values'
+                });
+                
+                // Get actual gradient element from DOM to see its attributes
+                const gradientElement = this.defsElement.select(`#${gradientId}`);
+                if (!gradientElement.empty()) {
+                    const x1 = gradientElement.attr('x1');
+                    const y1 = gradientElement.attr('y1'); 
+                    const x2 = gradientElement.attr('x2');
+                    const y2 = gradientElement.attr('y2');
+                    const gradientUnits = gradientElement.attr('gradientUnits');
+                    
+                    console.log(`[ACTUAL-GRADIENT-VECTOR] ${hostage['Hebrew Name']}:`, {
+                        x1, y1, x2, y2, gradientUnits
+                    });
+                    
+                    // Convert gradient vector percentages to actual coordinates for visualization
+                    if (gradientUnits === 'objectBoundingBox') {
+                        // For objectBoundingBox, the x1,x2 percentages relate to the path's bounding box
+                        const startPercent = parseFloat(x1.replace('%', ''));
+                        const endPercent = parseFloat(x2.replace('%', ''));
+                        
+                        // Find coordinates that correspond to these percentages
+                        let actualStartCoord = null;
+                        let actualEndCoord = null;
+                        
+                        analysis.segments.forEach(segment => {
+                            const segmentStartPercent = (segment.startLength / analysis.totalLength) * 100;
+                            const segmentEndPercent = (segment.endLength / analysis.totalLength) * 100;
+                            
+                            if (!actualStartCoord && segmentStartPercent <= startPercent && segmentEndPercent >= startPercent) {
+                                // Interpolate position within segment
+                                const ratio = (startPercent - segmentStartPercent) / (segmentEndPercent - segmentStartPercent);
+                                actualStartCoord = { 
+                                    x: segment.startX + (segment.endX - segment.startX) * ratio,
+                                    y: segment.startY + (segment.endY - segment.startY) * ratio,
+                                    percent: startPercent 
+                                };
+                            }
+                            
+                            if (!actualEndCoord && segmentStartPercent <= endPercent && segmentEndPercent >= endPercent) {
+                                // Interpolate position within segment
+                                const ratio = (endPercent - segmentStartPercent) / (segmentEndPercent - segmentStartPercent);
+                                actualEndCoord = { 
+                                    x: segment.startX + (segment.endX - segment.startX) * ratio,
+                                    y: segment.startY + (segment.endY - segment.startY) * ratio,
+                                    percent: endPercent 
+                                };
+                            }
+                        });
+            
+                        // Draw ACTUAL gradient markers with purple backgrounds
+                        if (actualStartCoord) {
+                            // Purple background rectangle for actual gradient start
+                            svg.append('rect')
+                                .attr('x', actualStartCoord.x - 20)
+                                .attr('y', actualStartCoord.y - 20)
+                                .attr('width', 40)
+                                .attr('height', 14)
+                                .attr('fill', 'purple')
+                                .attr('stroke', 'yellow')
+                                .attr('stroke-width', 2)
+                                .attr('class', `debug-actual-gradient debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+                                
+                            // White text label for actual gradient start
+                            svg.append('text')
+                                .attr('x', actualStartCoord.x)
+                                .attr('y', actualStartCoord.y - 8)
+                                .attr('fill', 'white')
+                                .attr('font-size', '11px')
+                                .attr('font-weight', 'bold')
+                                .attr('text-anchor', 'middle')
+                                .attr('class', `debug-actual-gradient debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                                .text(`ACTUAL-START ${actualStartCoord.percent.toFixed(1)}%`);
+                        }
+                        
+                        if (actualEndCoord) {
+                            // Purple background rectangle for actual gradient end
+                            svg.append('rect')
+                                .attr('x', actualEndCoord.x - 20)
+                                .attr('y', actualEndCoord.y + 8)
+                                .attr('width', 40)
+                                .attr('height', 14)
+                                .attr('fill', 'purple')
+                                .attr('stroke', 'yellow')
+                                .attr('stroke-width', 2)
+                                .attr('class', `debug-actual-gradient debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`);
+                                
+                            // White text label for actual gradient end
+                            svg.append('text')
+                                .attr('x', actualEndCoord.x)
+                                .attr('y', actualEndCoord.y + 18)
+                                .attr('fill', 'white')
+                                .attr('font-size', '11px')
+                                .attr('font-weight', 'bold')
+                                .attr('text-anchor', 'middle')
+                                .attr('class', `debug-actual-gradient debug-${hostage['Hebrew Name'].replace(/\s+/g, '-')}`)
+                                .text(`ACTUAL-END ${actualEndCoord.percent.toFixed(1)}%`);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Clear all cached data and gradients
      */
     clearCache() {
         this.pathAnalysisCache.clear();
         
         // Remove all gradient elements
-        this.gradientDefs.forEach((def, id) => {
+        this.gradientDefs.forEach((def) => {
             def.element.remove();
         });
         this.gradientDefs.clear();
