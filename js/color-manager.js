@@ -582,10 +582,18 @@ class ColorManager {
         
         // Debug logging
         this.debugGradientCount++;
-        if (this.debugGradientCount <= 3) {
+        if (this.debugGradientCount <= 5) {
             console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']}: Journey type = ${journeyType}`);
             console.log(`[GRADIENT_FIX] Corners:`, analysis.corners.map(c => 
                 `{start: ${c.startPercent}%, end: ${c.endPercent}%}`));
+        }
+        
+        // Extra debugging for released-body (dead→released)
+        if (journeyType === 'released-body') {
+            console.log(`[GRADIENT_FIX] RELEASED-BODY ${hostage['Hebrew Name']}:`);
+            console.log(`[GRADIENT_FIX] - Has ${analysis.corners.length} corners`);
+            console.log(`[GRADIENT_FIX] - Release date: ${hostage.releaseDate}`);
+            console.log(`[GRADIENT_FIX] - Final lane: ${hostage.finalLane}`);
         }
         
         // Create gradient using existing sophisticated methods with new colors
@@ -1215,6 +1223,11 @@ class ColorManager {
         // SIMPLIFIED: Released body should work exactly like living releases
         // Find the release transition corner (same logic as living)
         const releaseCorner = this.findReleaseTransitionCorner(analysis, hostage);
+        const deathCorner = this.findDeathTransitionCorner(analysis, hostage);
+        
+        console.log(`[GRADIENT_FIX] RELEASED-BODY ${hostage['Hebrew Name']}:`);
+        console.log(`[GRADIENT_FIX] - Death corner:`, deathCorner ? `{start: ${deathCorner.startPercent}%, end: ${deathCorner.endPercent}%}` : 'null');
+        console.log(`[GRADIENT_FIX] - Release corner:`, releaseCorner ? `{start: ${releaseCorner.startPercent}%, end: ${releaseCorner.endPercent}%}` : 'null');
         
         if (releaseCorner) {
             // Simple pattern like living releases: current state → transition → release color
