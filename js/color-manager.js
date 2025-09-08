@@ -44,9 +44,31 @@ class ColorManager {
     }
 
     /**
+     * DEBUG: Add red square to confirm code updates
+     */
+    addDebugSquare() {
+        const svg = this.timeline.svg;
+        
+        // Add a bright red square at bottom of viewport
+        svg.append('rect')
+            .attr('x', 10)
+            .attr('y', window.innerHeight - 60)
+            .attr('width', 50)
+            .attr('height', 50)
+            .attr('fill', '#FF0000')
+            .attr('stroke', '#000')
+            .attr('stroke-width', 2)
+            .style('z-index', 9999);
+        
+        console.log('[DEBUG] Red square added - code updates are loading!');
+    }
+
+    /**
      * Initialize the color system and create SVG defs for gradients
      */
     initialize() {
+        // DEBUG: Add red square to confirm code updates are loading
+        this.addDebugSquare();
         // Get or create defs element in SVG
         const svg = this.timeline.svg;
         let defs = svg.select('defs');
