@@ -552,12 +552,33 @@ class ColorManager {
         const sanitizedName = hostage['Hebrew Name']?.replace(/\s+/g, '-').replace(/'/g, '').replace(/[^\w\-א-ת]/g, '') || 'unknown';
         const gradientId = `gradient-${this.gradientIdCounter++}-${sanitizedName}`;
         
-        // Determine start point and transitions
-        const startPoint = this.getStartPoint(hostage);
-        const transitions = this.getTransitions(hostage, analysis);
+        // Use simplified journey type but with existing sophisticated methods
+        const journeyType = this.getSimplifiedJourneyType(hostage);
         
-        // Build gradient stops based on simplified architecture
-        const gradientStops = this.buildGradientStops(startPoint, transitions, analysis);
+        // Create gradient using existing sophisticated methods with new colors
+        let gradientStops = [];
+        switch (journeyType) {
+            case 'dead-from-start':
+                gradientStops = this.createDeadFromStartGradient(analysis, hostage);
+                break;
+            case 'died-in-captivity':
+                gradientStops = this.createDiedInCaptivityGradient(analysis, hostage);
+                break;
+            case 'released-alive':
+                gradientStops = this.createReleasedAliveGradient(analysis, hostage);
+                break;
+            case 'released-body':
+                gradientStops = this.createReleasedBodyGradient(analysis, hostage);
+                break;
+            case 'still-captive':
+                gradientStops = this.createStillCaptiveGradient(analysis, hostage);
+                break;
+            default:
+                gradientStops = [
+                    { offset: '0%', color: this.colors.living },
+                    { offset: '100%', color: this.colors.living }
+                ];
+        }
         
         // Process for RTL direction
         const processedStops = this.processGradientStopsForDirection(gradientStops, analysis, hostage);
@@ -596,39 +617,30 @@ class ColorManager {
     }
 
     /**
-     * Get transitions for a hostage based on their path
+     * Get simplified journey type for hostage
      * @param {Object} hostage - Hostage data
-     * @param {Object} analysis - Path analysis
-     * @returns {Array} Array of transition objects
+     * @returns {string} Simplified journey type
      */
-    getTransitions(hostage, analysis) {
-        const transitions = [];
+    getSimplifiedJourneyType(hostage) {
+        const finalLane = hostage.finalLane || '';
+        const hasReleaseDate = hostage.releaseDate && hostage.releaseDate_valid;
+        const startPoint = this.getStartPoint(hostage);
         
-        // Check hostage path for transitions
-        if (hostage.path && hostage.path.length > 1) {
-            for (let i = 1; i < hostage.path.length; i++) {
-                const fromEvent = hostage.path[i-1].event;
-                const toEvent = hostage.path[i].event;
-                const fromLane = hostage.path[i-1].lane;
-                const toLane = hostage.path[i].lane;
-                
-                // Find corresponding corner in analysis
-                const corner = analysis.corners[i-1];
-                
-                if (corner) {
-                    transitions.push({
-                        type: this.getTransitionType(fromEvent, toEvent, fromLane, toLane),
-                        corner: corner,
-                        fromEvent,
-                        toEvent,
-                        fromLane,
-                        toLane
-                    });
-                }
+        if (startPoint === 'dead' && hasReleaseDate) {
+            return 'dead-from-start';
+        } else if (finalLane.includes('released-deal-living') || finalLane.includes('released-military-living')) {
+            return 'released-alive';
+        } else if (finalLane.includes('released-deal-deceased') || finalLane.includes('released-military-deceased')) {
+            return 'released-body'; 
+        } else if (finalLane.includes('kidnapped-deceased')) {
+            if (hasReleaseDate) {
+                return 'released-body';
+            } else {
+                return 'died-in-captivity';
             }
+        } else {
+            return 'still-captive';
         }
-        
-        return transitions;
     }
 
     /**
@@ -826,12 +838,9 @@ class ColorManager {
     createDeadFromStartGradient(analysis, hostage) {
         const stops = [];
         
-        // RTL: Start from right with dark red transitioning to gray
-        // First 20px (convert to percentage)
-        const transitionPercent = Math.min(5, (20 / analysis.totalLength) * 100);
-        
-        stops.push({ offset: '0%', color: this.colors.darkRed });
-        stops.push({ offset: `${transitionPercent}%`, color: this.colors.deadInCaptivity });
+        // Start as dead: red immediately → gradient to gray (for Oct 7 deaths)
+        stops.push({ offset: '0%', color: this.colors.deathEvent });
+        stops.push({ offset: '5%', color: this.colors.dead }); // Quick transition to gray
         
         // Check for release
         if (analysis.corners.length > 0 && hostage.releaseDate) {
@@ -839,14 +848,13 @@ class ColorManager {
             const releaseColor = this.getReleaseColor(hostage);
             
             // Hold gray until release corner starts
-            stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.deadInCaptivity });
-            // Gradient during corner
+            stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+            // Transition during corner
             stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
-            // Continue with release color
             stops.push({ offset: '100%', color: releaseColor });
         } else {
             // No release, continue with gray
-            stops.push({ offset: '100%', color: this.colors.deadInCaptivity });
+            stops.push({ offset: '100%', color: this.colors.dead });
         }
         
         return stops;
@@ -865,34 +873,34 @@ class ColorManager {
         const deathCorner = this.findReleaseTransitionCorner(analysis, hostage);
         
         if (deathCorner) {
-            // Living color until death transition starts (same as living releases)
-            stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
-            stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.livingInCaptivity });
+            // Living color until death transition starts
+            stops.push({ offset: '0%', color: this.colors.living });
+            stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.living });
             
-            // Transition through red to semi-transparent gray during the death transition
-            // This follows the same logic as living releases but uses red as transition color
-            const transitionMidPoint = (deathCorner.startPercent + deathCorner.endPercent) / 2;
-            stops.push({ offset: `${transitionMidPoint}%`, color: this.colors.darkRed });
-            stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.deadInCaptivityTransparent });
+            // SPECIFIC REQUIREMENT: Living→Dead transition goes through red at FIRST corner point
+            // At first point of first corner: 100% mustard → 100% red 
+            // Then red → gray until second point of second corner
+            stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.deathEvent }); // 100% red at first corner
+            stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.dead }); // Gray at second corner
             
             // Check for release (body return)
             if (analysis.corners.length > 1 && hostage.releaseDate) {
                 const releaseCorner = analysis.corners[1];
                 const releaseColor = this.getReleaseColor(hostage);
                 
-                // Hold semi-transparent gray until release corner starts
-                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.deadInCaptivityTransparent });
-                // Transition to release color (same pattern as living releases)
+                // Hold gray until release corner starts
+                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                // Transition to release color
                 stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
                 stops.push({ offset: '100%', color: releaseColor });
             } else {
-                // No release, continue with semi-transparent gray
-                stops.push({ offset: '100%', color: this.colors.deadInCaptivityTransparent });
+                // No release, continue with gray
+                stops.push({ offset: '100%', color: this.colors.dead });
             }
         } else {
             // Fallback if no corner found
-            stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
-            stops.push({ offset: '100%', color: this.colors.deadInCaptivityTransparent });
+            stops.push({ offset: '0%', color: this.colors.living });
+            stops.push({ offset: '100%', color: this.colors.dead });
         }
         
         return stops;
@@ -914,15 +922,15 @@ class ColorManager {
         if (releaseCorner) {
             // Use the full span from first point of first corner to second point of second corner
             // This creates a gradual transition across the entire corner pair
-            stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
-            stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.livingInCaptivity });
+            stops.push({ offset: '0%', color: this.colors.living });
+            stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.living });
             stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
             stops.push({ offset: '100%', color: releaseColor });
             
         } else {
             // Fallback if no corner found - create a simple gradient for released hostages
-            stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
-            stops.push({ offset: '50%', color: this.colors.livingInCaptivity });
+            stops.push({ offset: '0%', color: this.colors.living });
+            stops.push({ offset: '50%', color: this.colors.living });
             stops.push({ offset: '100%', color: releaseColor });
         }
         
@@ -1159,10 +1167,10 @@ class ColorManager {
     createStillCaptiveGradient(analysis, hostage) {
         // Debug log
         
-        // Ensure we have valid colors
-        const mustardColor = this.colors.livingInCaptivity || '#DAA520';
-        const grayColor = this.colors.deadInCaptivity || '#808080';
-        const redColor = this.colors.darkRed || '#8B0000';
+        // Use new simplified colors
+        const mustardColor = this.colors.living;
+        const grayColor = this.colors.dead;
+        const redColor = this.colors.deathEvent;
         
         // Check if died in captivity but body not returned
         const isDead = hostage.deathDate || 
@@ -1185,10 +1193,10 @@ class ColorManager {
             
             return stops;
         } else if (isDead) {
-            // Dead but no transitions - use semi-transparent gray
+            // Dead but no transitions - use gray
             const stops = [
-                { offset: '0%', color: this.colors.deadInCaptivityTransparent },
-                { offset: '100%', color: this.colors.deadInCaptivityTransparent }
+                { offset: '0%', color: grayColor },
+                { offset: '100%', color: grayColor }
             ];
             
             return stops;
