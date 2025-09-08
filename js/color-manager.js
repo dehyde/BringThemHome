@@ -582,7 +582,7 @@ class ColorManager {
         
         // Debug logging
         this.debugGradientCount++;
-        if (this.debugGradientCount <= 5) {
+        if (this.debugGradientCount <= 5 || (hostage['Hebrew Name'] && hostage['Hebrew Name'].includes('עדן ירושלמי'))) {
             console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']}: Journey type = ${journeyType}`);
             console.log(`[GRADIENT_FIX] Corners:`, analysis.corners.map(c => 
                 `{start: ${c.startPercent}%, end: ${c.endPercent}%}`));
@@ -598,6 +598,12 @@ class ColorManager {
         
         // Create gradient using existing sophisticated methods with new colors
         let gradientStops = [];
+        
+        // Debug which path specific hostages take
+        if (hostage['Hebrew Name'] && (hostage['Hebrew Name'].includes('עדן ירושלמי') || hostage['Hebrew Name'].includes('רביד כץ'))) {
+            console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']} taking switch case: ${journeyType}`);
+        }
+        
         switch (journeyType) {
             case 'dead-from-start':
                 gradientStops = this.createDeadFromStartGradient(analysis, hostage);
@@ -619,11 +625,14 @@ class ColorManager {
                     { offset: '0%', color: this.colors.living },
                     { offset: '100%', color: this.colors.living }
                 ];
+                if (hostage['Hebrew Name'] && (hostage['Hebrew Name'].includes('עדן ירושלמי') || hostage['Hebrew Name'].includes('רביד כץ'))) {
+                    console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']} hit DEFAULT case - this is the problem!`);
+                }
         }
         
-        // Debug logging for gradient stops
-        if (this.debugGradientCount <= 3) {
-            console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']} stops:`, 
+        // Debug logging for gradient stops  
+        if (this.debugGradientCount <= 3 || (hostage['Hebrew Name'] && (hostage['Hebrew Name'].includes('עדן ירושלמי') || hostage['Hebrew Name'].includes('רביד כץ')))) {
+            console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']} final stops:`, 
                 gradientStops.map(s => `${s.offset}: ${s.color}`));
         }
         
@@ -945,10 +954,19 @@ class ColorManager {
                 if (releaseCorner) {
                     const releaseColor = this.getReleaseColor(hostage);
                     
+                    // Convert path length percentages to bounding box percentages
+                    const boundingStartPercent = this.convertPathLengthToBoundingBoxPercent(releaseCorner.startPercent, analysis);
+                    const boundingEndPercent = this.convertPathLengthToBoundingBoxPercent(releaseCorner.endPercent, analysis);
+                    
+                    // Debug for עדן ירושלמי
+                    if (hostage['Hebrew Name'] && hostage['Hebrew Name'].includes('עדן ירושלמי')) {
+                        console.log(`[GRADIENT_FIX] DIED-IN-CAPTIVITY: Path ${releaseCorner.startPercent}%-${releaseCorner.endPercent}% → Bounding ${boundingStartPercent.toFixed(1)}%-${boundingEndPercent.toFixed(1)}%`);
+                    }
+                    
                     // Hold gray until release corner starts (same as living releases)
-                    stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                    stops.push({ offset: `${boundingStartPercent}%`, color: this.colors.dead });
                     // Transition across full corner span (same as living releases)  
-                    stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
+                    stops.push({ offset: `${boundingEndPercent}%`, color: releaseColor });
                     stops.push({ offset: '100%', color: releaseColor });
                 } else {
                     // No proper release corner found
@@ -984,6 +1002,14 @@ class ColorManager {
         if (this.debugGradientCount <= 3 && hostage['Hebrew Name']) {
             console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']}: releaseCorner =`, 
                 releaseCorner ? `{start: ${releaseCorner.startPercent}%, end: ${releaseCorner.endPercent}%}` : 'null');
+                
+            // Debug bounding box vs path length mismatch
+            if (releaseCorner && hostage['Hebrew Name'].includes('עדן ירושלמי')) {
+                const pathLengthPercent = releaseCorner.endPercent - releaseCorner.startPercent;
+                console.log(`[GRADIENT_FIX] PATH LENGTH: Release transition spans ${pathLengthPercent}% of path length`);
+                console.log(`[GRADIENT_FIX] ISSUE: This maps to ~2-3% of visual bounding box width`);
+                console.log(`[GRADIENT_FIX] NEED: Convert path length % to bounding box % for proper gradient`);
+            }
         }
         
         if (releaseCorner) {
@@ -1002,6 +1028,44 @@ class ColorManager {
         }
         
         return stops;
+    }
+
+    /**
+     * Convert path length percentages to bounding box percentages
+     * @param {number} pathLengthPercent - Percentage along path length (0-100)
+     * @param {Object} analysis - Path analysis with segments
+     * @returns {number} Percentage along bounding box width (0-100)
+     */
+    convertPathLengthToBoundingBoxPercent(pathLengthPercent, analysis) {
+        if (!analysis || !analysis.segments || analysis.segments.length === 0) {
+            return pathLengthPercent; // Fallback to original
+        }
+        
+        // Find the segment containing this path length percentage
+        const targetLength = (pathLengthPercent / 100) * analysis.totalLength;
+        let accumulatedLength = 0;
+        
+        for (const segment of analysis.segments) {
+            if (accumulatedLength + segment.length >= targetLength) {
+                // Found the segment - interpolate the X coordinate
+                const segmentProgress = (targetLength - accumulatedLength) / segment.length;
+                const actualX = segment.startX + (segment.endX - segment.startX) * segmentProgress;
+                
+                // Convert X coordinate to bounding box percentage
+                const pathMinX = Math.min(...analysis.segments.map(s => Math.min(s.startX, s.endX)));
+                const pathMaxX = Math.max(...analysis.segments.map(s => Math.max(s.startX, s.endX)));
+                const pathWidth = pathMaxX - pathMinX;
+                
+                if (pathWidth === 0) return 0; // Vertical line
+                
+                const boundingBoxPercent = ((actualX - pathMinX) / pathWidth) * 100;
+                
+                return Math.max(0, Math.min(100, boundingBoxPercent));
+            }
+            accumulatedLength += segment.length;
+        }
+        
+        return pathLengthPercent; // Fallback
     }
 
     /**
@@ -1235,12 +1299,16 @@ class ColorManager {
                 // Create a complex transition: living → red → gray → release color
                 console.log(`[GRADIENT_FIX] - Using COMBINED death+release logic`);
                 
-                stops.push({ offset: '0%', color: this.colors.living });
-                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.living });
+                // Convert path length percentages to bounding box percentages
+                const boundingStartPercent = this.convertPathLengthToBoundingBoxPercent(releaseCorner.startPercent, analysis);
+                const boundingEndPercent = this.convertPathLengthToBoundingBoxPercent(releaseCorner.endPercent, analysis);
                 
-                // Complex transition within the corner span
-                const transitionStart = releaseCorner.startPercent;
-                const transitionEnd = releaseCorner.endPercent;
+                stops.push({ offset: '0%', color: this.colors.living });
+                stops.push({ offset: `${boundingStartPercent}%`, color: this.colors.living });
+                
+                // Complex transition within the corner span - using bounding box percentages
+                const transitionStart = boundingStartPercent;
+                const transitionEnd = boundingEndPercent;
                 const transitionMid1 = transitionStart + (transitionEnd - transitionStart) * 0.3; // 30% through
                 const transitionMid2 = transitionStart + (transitionEnd - transitionStart) * 0.6; // 60% through
                 
@@ -1253,24 +1321,37 @@ class ColorManager {
                 // SEPARATE EVENTS: Death and release are distinct (4+ corners)
                 console.log(`[GRADIENT_FIX] - Using SEPARATE death+release logic`);
                 
+                // Convert all corner percentages to bounding box percentages
+                const boundingReleaseStart = this.convertPathLengthToBoundingBoxPercent(releaseCorner.startPercent, analysis);
+                const boundingReleaseEnd = this.convertPathLengthToBoundingBoxPercent(releaseCorner.endPercent, analysis);
+                
+                // Debug for עדן ירושלמי
+                if (hostage['Hebrew Name'] && hostage['Hebrew Name'].includes('עדן ירושלמי')) {
+                    console.log(`[GRADIENT_FIX] SEPARATE-EVENTS: Path ${releaseCorner.startPercent}%-${releaseCorner.endPercent}% → Bounding ${boundingReleaseStart.toFixed(1)}%-${boundingReleaseEnd.toFixed(1)}%`);
+                }
+                
                 stops.push({ offset: '0%', color: this.colors.living });
                 
                 // Check if there's a death transition before release
                 if (deathCorner && deathCorner.endPercent < releaseCorner.startPercent) {
+                    // Convert death corner percentages to bounding box percentages
+                    const boundingDeathStart = this.convertPathLengthToBoundingBoxPercent(deathCorner.startPercent, analysis);
+                    const boundingDeathEnd = this.convertPathLengthToBoundingBoxPercent(deathCorner.endPercent, analysis);
+                    
                     // Handle death transition first: living → red → gray
-                    stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.living });
-                    stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.deathEvent });
-                    stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.dead });
+                    stops.push({ offset: `${boundingDeathStart}%`, color: this.colors.living });
+                    stops.push({ offset: `${boundingDeathStart}%`, color: this.colors.deathEvent });
+                    stops.push({ offset: `${boundingDeathEnd}%`, color: this.colors.dead });
                     
                     // Hold gray until release transition
-                    stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                    stops.push({ offset: `${boundingReleaseStart}%`, color: this.colors.dead });
                 } else {
                     // No clear death transition, assume dead by release time
-                    stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                    stops.push({ offset: `${boundingReleaseStart}%`, color: this.colors.dead });
                 }
                 
                 // Release transition: dead → release color
-                stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
+                stops.push({ offset: `${boundingReleaseEnd}%`, color: releaseColor });
                 stops.push({ offset: '100%', color: releaseColor });
             }
             
@@ -1418,6 +1499,14 @@ class ColorManager {
                     .style('fill', 'none');
                 
                 console.warn(`[SOLID-COLOR] ${hostage['Hebrew Name']}: No transitions, applied solid color: ${solidColor}`);
+                
+                // Special debug for עדן ירושלמי
+                if (hostage['Hebrew Name'] && hostage['Hebrew Name'].includes('עדן ירושלמי')) {
+                    console.log(`[GRADIENT_FIX] ISSUE FOUND: עדן ירושלמי has no transitions detected!`);
+                    console.log(`[GRADIENT_FIX] - analysis:`, analysis);
+                    console.log(`[GRADIENT_FIX] - corners:`, analysis ? analysis.corners : 'no analysis');
+                    console.log(`[GRADIENT_FIX] - This is why she gets solid color instead of gradient`);
+                }
                 return; // Exit early - no need for gradients
             }
             
