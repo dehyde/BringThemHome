@@ -1230,28 +1230,49 @@ class ColorManager {
         console.log(`[GRADIENT_FIX] - Release corner:`, releaseCorner ? `{start: ${releaseCorner.startPercent}%, end: ${releaseCorner.endPercent}%}` : 'null');
         
         if (releaseCorner) {
-            // Simple pattern like living releases: current state → transition → release color
-            // Since this is a released body, they should be dead by the time of release
-            stops.push({ offset: '0%', color: this.colors.living }); // Start living
-            
-            // Check if there's a death transition before release
-            const deathCorner = this.findDeathTransitionCorner(analysis, hostage);
-            if (deathCorner && deathCorner.endPercent < releaseCorner.startPercent) {
-                // Handle death transition first: living → red → gray
-                stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.living });
-                stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.deathEvent });
-                stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.dead });
+            if (analysis.corners.length === 2) {
+                // COMBINED EVENT: Death and release happened together (2 corners = 1 transition)
+                // Create a complex transition: living → red → gray → release color
+                console.log(`[GRADIENT_FIX] - Using COMBINED death+release logic`);
                 
-                // Hold gray until release transition
-                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                stops.push({ offset: '0%', color: this.colors.living });
+                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.living });
+                
+                // Complex transition within the corner span
+                const transitionStart = releaseCorner.startPercent;
+                const transitionEnd = releaseCorner.endPercent;
+                const transitionMid1 = transitionStart + (transitionEnd - transitionStart) * 0.3; // 30% through
+                const transitionMid2 = transitionStart + (transitionEnd - transitionStart) * 0.6; // 60% through
+                
+                stops.push({ offset: `${transitionMid1}%`, color: this.colors.deathEvent }); // Red
+                stops.push({ offset: `${transitionMid2}%`, color: this.colors.dead }); // Gray  
+                stops.push({ offset: `${transitionEnd}%`, color: releaseColor }); // Release color
+                stops.push({ offset: '100%', color: releaseColor });
+                
             } else {
-                // No clear death transition, assume dead by release time
-                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                // SEPARATE EVENTS: Death and release are distinct (4+ corners)
+                console.log(`[GRADIENT_FIX] - Using SEPARATE death+release logic`);
+                
+                stops.push({ offset: '0%', color: this.colors.living });
+                
+                // Check if there's a death transition before release
+                if (deathCorner && deathCorner.endPercent < releaseCorner.startPercent) {
+                    // Handle death transition first: living → red → gray
+                    stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.living });
+                    stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.deathEvent });
+                    stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.dead });
+                    
+                    // Hold gray until release transition
+                    stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                } else {
+                    // No clear death transition, assume dead by release time
+                    stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                }
+                
+                // Release transition: dead → release color
+                stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
+                stops.push({ offset: '100%', color: releaseColor });
             }
-            
-            // Release transition: dead → release color (EXACTLY like living releases)
-            stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
-            stops.push({ offset: '100%', color: releaseColor });
             
         } else {
             // Fallback - simple gradient
