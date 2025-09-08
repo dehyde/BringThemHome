@@ -61,6 +61,9 @@ class ColorManager {
             .style('z-index', 9999);
         
         console.log('[DEBUG] Red square added - code updates are loading!');
+        
+        // Debug: Log when gradients are applied
+        this.debugGradientCount = 0;
     }
 
     /**
@@ -577,6 +580,14 @@ class ColorManager {
         // Use simplified journey type but with existing sophisticated methods
         const journeyType = this.getSimplifiedJourneyType(hostage);
         
+        // Debug logging
+        this.debugGradientCount++;
+        if (this.debugGradientCount <= 3) {
+            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] ${hostage['Hebrew Name']}: Journey type = ${journeyType}`);
+            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] Corners:`, analysis.corners.map(c => 
+                `{start: ${c.startPercent}%, end: ${c.endPercent}%}`));
+        }
+        
         // Create gradient using existing sophisticated methods with new colors
         let gradientStops = [];
         switch (journeyType) {
@@ -602,8 +613,20 @@ class ColorManager {
                 ];
         }
         
+        // Debug logging for gradient stops
+        if (this.debugGradientCount <= 3) {
+            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] ${hostage['Hebrew Name']} stops:`, 
+                gradientStops.map(s => `${s.offset}: ${s.color}`));
+        }
+        
         // Process for RTL direction
         const processedStops = this.processGradientStopsForDirection(gradientStops, analysis, hostage);
+        
+        // Debug processed stops
+        if (this.debugGradientCount <= 3) {
+            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] ${hostage['Hebrew Name']} processed:`, 
+                processedStops.map(s => `${s.offset}: ${s.color}`));
+        }
         
         // Create the gradient element
         this.createGradientElement(gradientId, processedStops);
@@ -948,6 +971,12 @@ class ColorManager {
         
         // Find the appropriate corner for the release transition
         const releaseCorner = this.findReleaseTransitionCorner(analysis, hostage);
+        
+        // Debug logging
+        if (this.debugGradientCount <= 3 && hostage['Hebrew Name']) {
+            console.log(`[RELEASED-ALIVE-DEBUG] ${hostage['Hebrew Name']}: releaseCorner =`, 
+                releaseCorner ? `{start: ${releaseCorner.startPercent}%, end: ${releaseCorner.endPercent}%}` : 'null');
+        }
         
         if (releaseCorner) {
             // Use the full span from first point of first corner to second point of second corner
