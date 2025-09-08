@@ -9,21 +9,28 @@ class ColorManager {
         this.timeline = timelineCore;
         this.laneManager = laneManager;
         
-        // Color definitions - ALIGNED WITH CONFIG.JS
+        // Color definitions - SIMPLIFIED ARCHITECTURE
         this.colors = {
-            // Base colors
-            livingInCaptivity: '#DAA520', // Mustard orange for kidnapped living (from config)
-            deadInCaptivity: '#7f1d1d', // Dark red for kidnapped deceased (from config)
-            deadInCaptivityTransparent: 'rgba(127, 29, 29, 0.5)', // Semi-transparent gray for deceased after transition
-            darkRed: '#8B0000', // Dark red for death transitions
+            // Base lane colors
+            living: '#DAA520', // Mustard orange
+            dead: 'rgba(128, 128, 128, 0.6)', // Semi-transparent gray
+            deathEvent: '#8B0000', // Dark red for death transitions
             
-            // Release colors - MATCH CONFIG.JS EXACTLY
-            releasedDeal: '#f0fdf4', // Very light green for released deal (almost white)
-            releasedMilitary: '#3b82f6', // Blue for released military (from config)
+            // Released colors - living
+            releasedDealLiving: '#E6F3FF', // Very light blue for released in deal - living
+            releasedOpLiving: '#F0F8E8', // Very light olive green for released in operation - living
             
-            // Special states
-            initialDeath: '#8B0000', // For those dead from beginning
-            transitionGradientMid: '#A0522D' // Mid-point for living->dead transitions
+            // Released colors - dead  
+            releasedDealDead: '#F5F5F5', // Light gray for released in deal - dead
+            releasedOpDead: '#F5F5F5', // Light gray for released in operation - dead
+            
+            // Legacy support (will be removed)
+            livingInCaptivity: '#DAA520',
+            deadInCaptivity: 'rgba(128, 128, 128, 0.6)', 
+            deadInCaptivityTransparent: 'rgba(128, 128, 128, 0.6)',
+            darkRed: '#8B0000',
+            releasedDeal: '#E6F3FF',
+            releasedMilitary: '#F0F8E8'
         };
         
         // Debug: Log colors to verify
@@ -529,77 +536,200 @@ class ColorManager {
      * @returns {string} Gradient ID to use
      */
     createGradientForHostage(hostage, pathString) {
-        
         const analysis = this.analyzePath(pathString);
         if (!analysis) {
-            // Create a simple fallback gradient anyway
+            // Create fallback for paths we can't analyze
             const fallbackStops = [
-                { offset: '0%', color: this.colors.livingInCaptivity },
-                { offset: '100%', color: this.colors.livingInCaptivity }
+                { offset: '0%', color: this.colors.living },
+                { offset: '100%', color: this.colors.living }
             ];
             const fallbackGradientId = `gradient-fallback-${this.gradientIdCounter++}`;
             this.createGradientElement(fallbackGradientId, fallbackStops);
             return fallbackGradientId;
         }
-        // Determine hostage journey type
-        const journeyType = this.determineJourneyType(hostage);
-        
-        // Generate unique gradient ID - sanitize special characters for valid SVG IDs
+
+        // Generate unique gradient ID
         const sanitizedName = hostage['Hebrew Name']?.replace(/\s+/g, '-').replace(/'/g, '').replace(/[^\w\-א-ת]/g, '') || 'unknown';
         const gradientId = `gradient-${this.gradientIdCounter++}-${sanitizedName}`;
         
-        // Create gradient based on journey type
-        let gradientStops = [];
-        let coordinates = null;
+        // Determine start point and transitions
+        const startPoint = this.getStartPoint(hostage);
+        const transitions = this.getTransitions(hostage, analysis);
         
-        // Get transition corner data to determine gradient positioning
-        const transitionInfo = this.getTransitionInfo(analysis, hostage, journeyType);
+        // Build gradient stops based on simplified architecture
+        const gradientStops = this.buildGradientStops(startPoint, transitions, analysis);
         
-        switch (journeyType) {
-            case 'dead-from-start':
-                gradientStops = this.createDeadFromStartGradient(analysis, hostage);
-                break;
-                
-            case 'died-in-captivity':
-                gradientStops = this.createDiedInCaptivityGradient(analysis, hostage);
-                break;
-                
-            case 'released-alive':
-                gradientStops = this.createReleasedAliveGradient(analysis, hostage);
-                break;
-                
-            case 'released-body':
-                gradientStops = this.createReleasedBodyGradient(analysis, hostage);
-                break;
-                
-            case 'still-captive':
-                gradientStops = this.createStillCaptiveGradient(analysis, hostage);
-                break;
-                
-            default:
-                // Fallback to solid color
-                gradientStops = [
-                    { offset: '0%', color: this.colors.livingInCaptivity },
-                    { offset: '100%', color: this.colors.livingInCaptivity }
-                ];
-        }
-        
-        // Ensure we have gradient stops
-        if (!gradientStops || gradientStops.length === 0) {
-            console.warn(`[GRADIENT-FALLBACK] ${hostage['Hebrew Name']}: No gradient stops, creating fallback gradient`);
-            gradientStops = [
-                { offset: '0%', color: this.colors.livingInCaptivity },
-                { offset: '100%', color: this.colors.livingInCaptivity }
-            ];
-        }
-        
-        // Process gradient stops for path direction (flip if right-to-left)
+        // Process for RTL direction
         const processedStops = this.processGradientStopsForDirection(gradientStops, analysis, hostage);
         
-        // Create the gradient element with processed stops
-        this.createGradientElement(gradientId, processedStops, transitionInfo);
+        // Create the gradient element
+        this.createGradientElement(gradientId, processedStops);
         
         return gradientId;
+    }
+
+    /**
+     * Determine start point for hostage (living or dead from start)
+     * @param {Object} hostage - Hostage data
+     * @returns {string} 'living' or 'dead'
+     */
+    getStartPoint(hostage) {
+        // Check if died on Oct 7 specifically
+        if (hostage.deathDate) {
+            try {
+                const deathDate = hostage.deathDate instanceof Date ? 
+                    hostage.deathDate : new Date(hostage.deathDate);
+                
+                if (!isNaN(deathDate.getTime())) {
+                    const oct7 = new Date('2023-10-07');
+                    const diedOnOct7 = Math.abs(deathDate.getTime() - oct7.getTime()) < 86400000; // Within 24 hours
+                    if (diedOnOct7) {
+                        return 'dead';
+                    }
+                }
+            } catch (error) {
+                console.warn('Error parsing death date for hostage:', hostage['Hebrew Name'], error);
+            }
+        }
+        
+        return 'living'; // Default: start as living
+    }
+
+    /**
+     * Get transitions for a hostage based on their path
+     * @param {Object} hostage - Hostage data
+     * @param {Object} analysis - Path analysis
+     * @returns {Array} Array of transition objects
+     */
+    getTransitions(hostage, analysis) {
+        const transitions = [];
+        
+        // Check hostage path for transitions
+        if (hostage.path && hostage.path.length > 1) {
+            for (let i = 1; i < hostage.path.length; i++) {
+                const fromEvent = hostage.path[i-1].event;
+                const toEvent = hostage.path[i].event;
+                const fromLane = hostage.path[i-1].lane;
+                const toLane = hostage.path[i].lane;
+                
+                // Find corresponding corner in analysis
+                const corner = analysis.corners[i-1];
+                
+                if (corner) {
+                    transitions.push({
+                        type: this.getTransitionType(fromEvent, toEvent, fromLane, toLane),
+                        corner: corner,
+                        fromEvent,
+                        toEvent,
+                        fromLane,
+                        toLane
+                    });
+                }
+            }
+        }
+        
+        return transitions;
+    }
+
+    /**
+     * Determine transition type between two events/lanes
+     * @param {string} fromEvent - Source event
+     * @param {string} toEvent - Target event  
+     * @param {string} fromLane - Source lane
+     * @param {string} toLane - Target lane
+     * @returns {string} Transition type
+     */
+    getTransitionType(fromEvent, toEvent, fromLane, toLane) {
+        // Living to Dead transition (unique)
+        if (toEvent === 'died' || toLane.includes('deceased')) {
+            return 'living-to-dead';
+        }
+        
+        // Released transitions based on target lane
+        if (toLane.includes('released-deal-living')) {
+            return 'living-to-released-deal';
+        }
+        if (toLane.includes('released-military-living')) {
+            return 'living-to-released-op';
+        }
+        if (toLane.includes('released-deal-deceased')) {
+            return 'dead-to-released-deal';
+        }
+        if (toLane.includes('released-military-deceased')) {
+            return 'dead-to-released-op';
+        }
+        
+        return 'unknown';
+    }
+
+    /**
+     * Build gradient stops based on start point and transitions
+     * @param {string} startPoint - 'living' or 'dead'
+     * @param {Array} transitions - Array of transitions
+     * @param {Object} analysis - Path analysis
+     * @returns {Array} Gradient stops
+     */
+    buildGradientStops(startPoint, transitions, analysis) {
+        const stops = [];
+        let currentColor;
+        
+        // Set initial color based on start point
+        if (startPoint === 'dead') {
+            // Start as dead: red immediately → gradient to gray
+            stops.push({ offset: '0%', color: this.colors.deathEvent });
+            stops.push({ offset: '5%', color: this.colors.dead }); // Quick transition to gray
+            currentColor = this.colors.dead;
+        } else {
+            // Start as living: mustard orange
+            stops.push({ offset: '0%', color: this.colors.living });
+            currentColor = this.colors.living;
+        }
+        
+        // Process each transition
+        transitions.forEach((transition, index) => {
+            const corner = transition.corner;
+            const startPercent = corner.startPercent;
+            const endPercent = corner.endPercent;
+            
+            if (transition.type === 'living-to-dead') {
+                // Unique transition: living → red (at first corner) → gray (at second corner)
+                stops.push({ offset: `${startPercent}%`, color: currentColor });
+                stops.push({ offset: `${startPercent}%`, color: this.colors.deathEvent }); // Start red at first corner
+                stops.push({ offset: `${endPercent}%`, color: this.colors.dead }); // End gray at second corner
+                currentColor = this.colors.dead;
+            } else {
+                // Standard transition: maintain current color until start, then transition to target
+                const targetColor = this.getTargetColor(transition.type);
+                stops.push({ offset: `${startPercent}%`, color: currentColor });
+                stops.push({ offset: `${endPercent}%`, color: targetColor });
+                currentColor = targetColor;
+            }
+        });
+        
+        // End with current color
+        stops.push({ offset: '100%', color: currentColor });
+        
+        return stops;
+    }
+
+    /**
+     * Get target color for a transition type
+     * @param {string} transitionType - Type of transition
+     * @returns {string} Target color
+     */
+    getTargetColor(transitionType) {
+        switch (transitionType) {
+            case 'living-to-released-deal':
+                return this.colors.releasedDealLiving;
+            case 'living-to-released-op':
+                return this.colors.releasedOpLiving;
+            case 'dead-to-released-deal':
+                return this.colors.releasedDealDead;
+            case 'dead-to-released-op':
+                return this.colors.releasedOpDead;
+            default:
+                return this.colors.living;
+        }
     }
 
     /**
@@ -1080,17 +1210,20 @@ class ColorManager {
      */
     getReleaseColor(hostage) {
         const circumstances = (hostage['Release/Death Circumstances'] || '').toLowerCase();
+        const finalLane = hostage.finalLane || '';
+        const isDeceased = finalLane.includes('deceased');
         
-        let color;
-        if (circumstances.includes('military') || circumstances.includes('operation') || 
-            circumstances.includes('rescue')) {
-            color = this.colors.releasedMilitary;
+        // Determine operation vs deal
+        const isOperation = circumstances.includes('military') || 
+                           circumstances.includes('operation') || 
+                           circumstances.includes('rescue');
+        
+        // Return appropriate color based on living/dead and operation/deal
+        if (isDeceased) {
+            return isOperation ? this.colors.releasedOpDead : this.colors.releasedDealDead;
         } else {
-            color = this.colors.releasedDeal;
+            return isOperation ? this.colors.releasedOpLiving : this.colors.releasedDealLiving;
         }
-        
-        
-        return color;
     }
 
     /**
@@ -1210,26 +1343,25 @@ class ColorManager {
      * @returns {string} Color hex code
      */
     getFallbackColor(hostage) {
-        const currentStatus = hostage['Current Status'] || '';
+        // Use simplified architecture for fallback colors
+        const startPoint = this.getStartPoint(hostage);
         
-        // Check if still in captivity
-        if (currentStatus.includes('Held in Gaza')) {
-            // Check if dead or alive
-            if (hostage.deathDate || currentStatus.toLowerCase().includes('deceased')) {
-                return this.colors.deadInCaptivityTransparent;
-            } else {
-                return this.colors.livingInCaptivity;
-            }
+        if (startPoint === 'dead') {
+            return this.colors.dead;
         }
         
-        // Check final lane
-        if (hostage.finalLane?.includes('deceased')) {
-            return this.colors.deadInCaptivityTransparent;
+        // Check current status for living hostages
+        const currentStatus = hostage['Current Status'] || '';
+        const finalLane = hostage.finalLane || '';
+        
+        // Dead in captivity
+        if (currentStatus.toLowerCase().includes('deceased') || finalLane.includes('deceased')) {
+            return this.colors.dead;
         } else if (hostage.finalLane?.includes('released')) {
             return this.getReleaseColor(hostage);
         } else {
-            // Default for still captive
-            return this.colors.livingInCaptivity;
+            // Default for still captive living
+            return this.colors.living;
         }
     }
 
