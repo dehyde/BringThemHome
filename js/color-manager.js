@@ -1013,11 +1013,11 @@ class ColorManager {
         
         if (isRightToLeft) {
             
-            // Flip the percentages and reverse colors
+            // Flip the percentages for RTL (but keep color order the same)
             const flippedStops = stops.map(stop => ({
                 ...stop,
                 offset: `${100 - parseFloat(stop.offset.replace('%', ''))}%`
-            })).reverse();
+            }));
             return flippedStops;
         }
         
