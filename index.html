@@ -11,6 +11,20 @@
     <!-- D3.js -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     
+    <!-- DEBUG: Add inline style for debug square -->
+    <style>
+        .debug-square {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            background-color: #FF0000;
+            border: 2px solid #000;
+            z-index: 9999;
+        }
+    </style>
+    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css">
     
@@ -217,8 +231,11 @@
     <script src="js/timeline-core.js?v=20250831-2"></script>
     <script src="js/lane-manager-new.js?v=1756830226"></script>
     <script src="js/transition-engine.js?v=20250831-2"></script>
-    <script src="js/color-manager.js?v=20250908-2"></script>
+    <script src="js/color-manager.js?v=1757308638"></script>
     <script src="js/interaction.js?v=20250831-2"></script>
     <script src="js/main.js?v=20250902-1"></script>
+    
+    <!-- DEBUG: HTML-based debug square -->
+    <div class="debug-square"></div>
 </body>
 </html>
