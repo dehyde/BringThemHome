@@ -869,8 +869,8 @@ class ColorManager {
     createDiedInCaptivityGradient(analysis, hostage) {
         const stops = [];
         
-        // Find death transition corner using intelligent selection
-        const deathCorner = this.findReleaseTransitionCorner(analysis, hostage);
+        // Find death transition corner - should be FIRST transition, not last
+        const deathCorner = this.findDeathTransitionCorner(analysis, hostage);
         
         if (deathCorner) {
             // Living color until death transition starts
@@ -883,16 +883,24 @@ class ColorManager {
             stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.deathEvent }); // 100% red at first corner
             stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.dead }); // Gray at second corner
             
-            // Check for release (body return)
-            if (analysis.corners.length > 1 && hostage.releaseDate) {
-                const releaseCorner = analysis.corners[1];
-                const releaseColor = this.getReleaseColor(hostage);
+            // Check for release (body return) - use same intelligent logic as living releases
+            if (analysis.corners.length > 2 && hostage.releaseDate) {
+                // For died-in-captivity with body return, we have death + release transitions
+                // Death corners are 0-1, release corners should be 2-3
+                const releaseCorner = this.findReleaseTransitionCorner(analysis, hostage);
                 
-                // Hold gray until release corner starts
-                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
-                // Transition to release color
-                stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
-                stops.push({ offset: '100%', color: releaseColor });
+                if (releaseCorner) {
+                    const releaseColor = this.getReleaseColor(hostage);
+                    
+                    // Hold gray until release corner starts (same as living releases)
+                    stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+                    // Transition across full corner span (same as living releases)  
+                    stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
+                    stops.push({ offset: '100%', color: releaseColor });
+                } else {
+                    // No proper release corner found
+                    stops.push({ offset: '100%', color: this.colors.dead });
+                }
             } else {
                 // No release, continue with gray
                 stops.push({ offset: '100%', color: this.colors.dead });
@@ -1040,6 +1048,39 @@ class ColorManager {
             endY: endY
         };
         return coordinates;
+    }
+
+    /**
+     * Find the corner that represents the death transition
+     * Death transitions should be the FIRST transition (corners 0-1)
+     * @param {Object} analysis - Path analysis  
+     * @param {Object} hostage - Hostage data
+     * @returns {Object|null} The corner representing the death transition
+     */
+    findDeathTransitionCorner(analysis, hostage) {
+        if (!analysis.corners || analysis.corners.length === 0) {
+            return null;
+        }
+        
+        let firstCorner, secondCorner;
+        
+        if (analysis.corners.length >= 2) {
+            // Death transition is always the FIRST transition pair (corners 0-1)
+            firstCorner = analysis.corners[0];
+            secondCorner = analysis.corners[1];
+        } else {
+            return null; // Need at least 2 corners for a transition
+        }
+        
+        // Create transition spanning from start of first corner to end of second corner
+        return {
+            startPercent: firstCorner.startPercent,
+            endPercent: secondCorner.endPercent,
+            startX: firstCorner.startX,
+            startY: firstCorner.startY,
+            endX: secondCorner.endX,
+            endY: secondCorner.endY
+        };
     }
 
     /**
