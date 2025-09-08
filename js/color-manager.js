@@ -60,7 +60,7 @@ class ColorManager {
             .attr('stroke-width', 2)
             .style('z-index', 9999);
         
-        console.log('[DEBUG] Red square added - code updates are loading!');
+        console.log('[GRADIENT_FIX] Red square added - code updates are loading!');
         
         // Debug: Log when gradients are applied
         this.debugGradientCount = 0;
@@ -583,8 +583,8 @@ class ColorManager {
         // Debug logging
         this.debugGradientCount++;
         if (this.debugGradientCount <= 3) {
-            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] ${hostage['Hebrew Name']}: Journey type = ${journeyType}`);
-            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] Corners:`, analysis.corners.map(c => 
+            console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']}: Journey type = ${journeyType}`);
+            console.log(`[GRADIENT_FIX] Corners:`, analysis.corners.map(c => 
                 `{start: ${c.startPercent}%, end: ${c.endPercent}%}`));
         }
         
@@ -615,7 +615,7 @@ class ColorManager {
         
         // Debug logging for gradient stops
         if (this.debugGradientCount <= 3) {
-            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] ${hostage['Hebrew Name']} stops:`, 
+            console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']} stops:`, 
                 gradientStops.map(s => `${s.offset}: ${s.color}`));
         }
         
@@ -624,7 +624,7 @@ class ColorManager {
         
         // Debug processed stops
         if (this.debugGradientCount <= 3) {
-            console.log(`[GRADIENT-DEBUG-${this.debugGradientCount}] ${hostage['Hebrew Name']} processed:`, 
+            console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']} processed:`, 
                 processedStops.map(s => `${s.offset}: ${s.color}`));
         }
         
@@ -974,7 +974,7 @@ class ColorManager {
         
         // Debug logging
         if (this.debugGradientCount <= 3 && hostage['Hebrew Name']) {
-            console.log(`[RELEASED-ALIVE-DEBUG] ${hostage['Hebrew Name']}: releaseCorner =`, 
+            console.log(`[GRADIENT_FIX] ${hostage['Hebrew Name']}: releaseCorner =`, 
                 releaseCorner ? `{start: ${releaseCorner.startPercent}%, end: ${releaseCorner.endPercent}%}` : 'null');
         }
         
