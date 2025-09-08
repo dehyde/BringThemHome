@@ -1157,42 +1157,38 @@ class ColorManager {
         // This combines died-in-captivity with release
         // Find the most appropriate corners for death and release transitions
         
-        if (analysis.corners.length >= 2) {
-            // For released body, use intelligent selection for the main transition
-            const mainCorner = this.findReleaseTransitionCorner(analysis, hostage);
-            // Use first corner as death transition if different from main
-            const deathCorner = mainCorner === analysis.corners[0] ? analysis.corners[1] : analysis.corners[0];
-            const releaseCorner = mainCorner;
+        // SIMPLIFIED: Released body should work exactly like living releases
+        // Find the release transition corner (same logic as living)
+        const releaseCorner = this.findReleaseTransitionCorner(analysis, hostage);
+        
+        if (releaseCorner) {
+            // Simple pattern like living releases: current state → transition → release color
+            // Since this is a released body, they should be dead by the time of release
+            stops.push({ offset: '0%', color: this.colors.living }); // Start living
             
-            // Living until death corner
-            stops.push({ offset: '0%', color: this.colors.livingInCaptivity });
-            stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.livingInCaptivity });
+            // Check if there's a death transition before release
+            const deathCorner = this.findDeathTransitionCorner(analysis, hostage);
+            if (deathCorner && deathCorner.endPercent < releaseCorner.startPercent) {
+                // Handle death transition first: living → red → gray
+                stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.living });
+                stops.push({ offset: `${deathCorner.startPercent}%`, color: this.colors.deathEvent });
+                stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.dead });
+                
+                // Hold gray until release transition
+                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+            } else {
+                // No clear death transition, assume dead by release time
+                stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.dead });
+            }
             
-            // Death transition over 50% of vertical line
-            const deathVerticalLength = deathCorner.endPercent - deathCorner.startPercent;
-            const deathTransitionEnd = deathCorner.startPercent + (deathVerticalLength * 0.5);
-            stops.push({ offset: `${deathTransitionEnd}%`, color: this.colors.deadInCaptivity });
-            stops.push({ offset: `${deathCorner.endPercent}%`, color: this.colors.deadInCaptivity });
-            
-            // Hold gray until release
-            stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.deadInCaptivity });
-            
-            // Release transition over 50% of vertical line
-            const releaseVerticalLength = releaseCorner.endPercent - releaseCorner.startPercent;
-            const releaseTransitionEnd = releaseCorner.startPercent + (releaseVerticalLength * 0.5);
-            stops.push({ offset: `${releaseTransitionEnd}%`, color: releaseColor });
-            stops.push({ offset: '100%', color: releaseColor });
-        } else if (analysis.corners.length === 1) {
-            // Only one corner - assume it's release
-            const releaseCorner = analysis.corners[0];
-            
-            stops.push({ offset: '0%', color: this.colors.deadInCaptivity });
-            stops.push({ offset: `${releaseCorner.startPercent}%`, color: this.colors.deadInCaptivity });
+            // Release transition: dead → release color (EXACTLY like living releases)
             stops.push({ offset: `${releaseCorner.endPercent}%`, color: releaseColor });
             stops.push({ offset: '100%', color: releaseColor });
+            
         } else {
-            // Fallback
-            stops.push({ offset: '0%', color: this.colors.deadInCaptivity });
+            // Fallback - simple gradient
+            stops.push({ offset: '0%', color: this.colors.living });
+            stops.push({ offset: '33%', color: this.colors.dead });
             stops.push({ offset: '100%', color: releaseColor });
         }
         
