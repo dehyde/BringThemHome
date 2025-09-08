@@ -1013,11 +1013,15 @@ class ColorManager {
         
         if (isRightToLeft) {
             
-            // Flip the percentages for RTL (but keep color order the same)
+            // Flip the percentages for RTL and sort by percentage to maintain ascending order
             const flippedStops = stops.map(stop => ({
                 ...stop,
                 offset: `${100 - parseFloat(stop.offset.replace('%', ''))}%`
-            }));
+            })).sort((a, b) => {
+                const aPercent = parseFloat(a.offset.replace('%', ''));
+                const bPercent = parseFloat(b.offset.replace('%', ''));
+                return aPercent - bPercent;
+            });
             return flippedStops;
         }
         
