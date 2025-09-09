@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Gradient Test</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div id="test"></div>
+    <script>
+        // Simple test to see current gradient behavior
+        const svg = d3.select('#test')
+            .append('svg')
+            .attr('width', 400)
+            .attr('height', 200);
+        
+        const defs = svg.append('defs');
+        
+        // Test gradient with precise percentages
+        const gradient = defs.append('linearGradient')
+            .attr('id', 'test-gradient')
+            .attr('x1', '0%')
+            .attr('y1', '0%') 
+            .attr('x2', '0%')
+            .attr('y2', '100%');
+            
+        gradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', '#ef4444')
+            .attr('stop-opacity', 1);
+            
+        gradient.append('stop')
+            .attr('offset', '20%')
+            .attr('stop-color', '#ef4444')
+            .attr('stop-opacity', 1);
+            
+        gradient.append('stop')
+            .attr('offset', '40%')
+            .attr('stop-color', '#22c55e')
+            .attr('stop-opacity', 1);
+            
+        gradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', '#22c55e')
+            .attr('stop-opacity', 1);
+        
+        // Test path
+        svg.append('path')
+            .attr('d', 'M10,10 Q50,50 100,100 Q150,150 200,180')
+            .attr('stroke', 'url(#test-gradient)')
+            .attr('stroke-width', 3)
+            .attr('fill', 'none')
+            .attr('opacity', 1);
+            
+        console.log('Test gradient created');
+    </script>
+</body>
+</html>
