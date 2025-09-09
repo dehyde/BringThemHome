@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>נתיבי גורל החטופים - ויזואליזציית זמן מקיפה</title>
+    
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- DEBUG: Add inline style for debug square -->
+    <style>
+        .debug-square {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            background-color: #FF0000;
+            border: 2px solid #000;
+            z-index: 9999;
+        }
+    </style>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <style>
+        /* Layout Structure */
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+        
+        .app-header {
+            height: 50px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+            border-bottom: 2px solid #1a252f;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .app-header h1 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .spacing-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #ecf0f1;
+            cursor: pointer;
+        }
+        
+        .spacing-toggle input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #ecf0f1;
+        }
+        
+        .header-stats .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .header-stats .stat-value {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .header-stats .stat-label {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+        
+        .app-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+        
+        .app-footer {
+            height: 50px;
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-top: 2px solid #1a252f;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .app-footer .live-count {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        /* Timeline Container */
+        .timeline-container {
+            flex: 1;
+            overflow: auto;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 100px); /* Viewport height minus header/footer */
+        }
+        
+        /* Loading states */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 8px;
+            color: #c33;
+            direction: ltr;
+            text-align: left;
+        }
+        
+        .error-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .stats {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            direction: ltr;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Fixed Header -->
+        <header class="app-header">
+            <h1>נתיבי גורל החטופים - ויזואליזציית זמן מקיפה</h1>
+            <div class="header-controls">
+                <label class="spacing-toggle">
+                    <input type="checkbox" id="spacing-mode-toggle"> מרווחים אחידים
+                </label>
+                <div id="header-stats" class="header-stats" style="display: none;">
+                    <!-- Stats will be populated here -->
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+            <!-- Error Panel -->
+            <div id="error-panel" class="error" style="display: none;">
+                <h3>שגיאות בעיבוד הנתונים</h3>
+                <div id="error-content"></div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading">
+                טוען נתונים ומעבד קובץ CSV...
+            </div>
+
+            <!-- Timeline Container - Direct timeline without wrapper -->
+            <div id="visualization-container" class="timeline-container" style="display: none;">
+                <div id="main-timeline">
+                    <!-- SVG will be inserted here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Fixed Footer -->
+        <footer class="app-footer">
+            <div id="live-count" class="live-count">טוען נתונים...</div>
+        </footer>
+    </div>
+
+    <!-- Tooltip (positioned absolutely) -->
+    <div id="tooltip" class="tooltip" style="display: none;"></div>
+
+    <!-- JavaScript Modules -->
+    <script src="js/config.js?v=20250901-1"></script>
+    <script src="js/event-bus.js?v=20250901-1"></script>
+    <script src="js/state-manager.js?v=20250901-1"></script>
+    <script src="js/data-processor.js?v=20250902-1"></script>
+    <script src="js/timeline-core.js?v=20250831-2"></script>
+    <script src="js/lane-manager-new.js?v=1756830226"></script>
+    <script src="js/transition-engine.js?v=20250831-2"></script>
+    <script src="js/color-manager.js?v=1757308648"></script>
+    <script src="js/interaction.js?v=20250831-2"></script>
+    <script src="js/main.js?v=20250902-1"></script>
+    
+    <!-- DEBUG: HTML-based debug square -->
+    <div class="debug-square"></div>
+</body>
+</html>

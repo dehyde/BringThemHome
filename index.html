@@ -3,239 +3,918 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>נתיבי גורל החטופים - ויזואליזציית זמן מקיפה</title>
-    
-    <!-- D3.js -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    
-    <!-- DEBUG: Add inline style for debug square -->
+    <title>החזירו אותם הביתה - Bring Them Home</title>
     <style>
-        .debug-square {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            width: 50px;
-            height: 50px;
-            background-color: #FF0000;
-            border: 2px solid #000;
-            z-index: 9999;
-        }
-    </style>
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/styles.css">
-    
-    <style>
-        /* Layout Structure */
-        .app-layout {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-        }
-        
-        .app-header {
-            height: 50px;
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            flex-shrink: 0;
-            border-bottom: 2px solid #1a252f;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        
-        .app-header h1 {
+        * {
             margin: 0;
-            font-size: 16px;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            padding: 0;
+            box-sizing: border-box;
         }
         
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 20px;
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
         }
         
-        .spacing-toggle {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 12px;
-            color: #ecf0f1;
-            cursor: pointer;
+        .container {
+            max-width: 100vw;
+            margin: 0 auto;
+            position: relative;
         }
         
-        .spacing-toggle input[type="checkbox"] {
-            margin: 0;
-        }
-        
-        .header-stats {
-            display: flex;
-            gap: 20px;
-            font-size: 12px;
-            color: #ecf0f1;
-        }
-        
-        .header-stats .stat {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .header-stats .stat-value {
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .header-stats .stat-label {
-            font-size: 10px;
-            opacity: 0.8;
-        }
-        
-        .app-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #f8fafc;
-        }
-        
-        .app-footer {
-            height: 50px;
-            background: linear-gradient(135deg, #34495e, #2c3e50);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            border-top: 2px solid #1a252f;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
-        }
-        
-        .app-footer .live-count {
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        /* Timeline Container */
-        .timeline-container {
-            flex: 1;
-            overflow: auto;
-            background: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: calc(100vh - 100px); /* Viewport height minus header/footer */
-        }
-        
-        /* Loading states */
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            font-size: 18px;
-            color: #666;
-        }
-        
-        .error {
-            background: #fee;
-            border: 1px solid #fcc;
-            padding: 20px;
-            margin: 10px;
-            border-radius: 8px;
-            color: #c33;
-            direction: ltr;
-            text-align: left;
-        }
-        
-        .error-list {
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: 10px;
-            padding: 10px;
-            background: #fafafa;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 12px;
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin: 20px 0;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            position: relative;
+            z-index: 100;
         }
         
         .stats {
-            background: #f9f9f9;
+            text-align: center;
+            margin-bottom: 20px;
             padding: 15px;
-            margin: 10px;
+            background-color: rgba(50, 50, 50, 0.9);
+            border-radius: 10px;
+            position: relative;
+            z-index: 100;
+            margin: 0 20px 20px;
+        }
+        
+        .stat-item {
+            display: inline-block;
+            margin: 0 15px;
+            padding: 8px 12px;
+            background-color: #444;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .stat-number {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            color: #ccc;
+        }
+        
+        .legend {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(20, 20, 20, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 200;
+            border: 1px solid #333;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-left: 10px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .visualization-container {
+            width: 100vw;
+            height: calc(100vh - 200px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hostage-circle {
+            position: absolute;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.2);
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .hostage-circle:hover {
+            transform: scale(1.5);
+            z-index: 50;
+            border: 3px solid #FFD700;
+            box-shadow: 0 5px 20px rgba(255,215,0,0.3);
+        }
+        
+        .hostage-circle.released {
+            border-color: #9C27B0;
+            box-shadow: 0 0 10px rgba(156, 39, 176, 0.3);
+        }
+        
+        .hostage-circle.captivity {
+            border-color: #ff9800;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
+        }
+        
+        .hostage-circle.died-oct7 {
+            border-color: #d32f2f;
+            box-shadow: 0 0 10px rgba(211, 47, 47, 0.3);
+        }
+        
+        .hostage-circle.died-captivity-hamas {
+            border-color: #b71c1c;
+            box-shadow: 0 0 10px rgba(183, 28, 28, 0.4);
+        }
+        
+        .hostage-circle.died-idf-confirmed {
+            border-color: #1565C0;
+            box-shadow: 0 0 10px rgba(21, 101, 192, 0.3);
+        }
+        
+        .hostage-circle.died-idf-suspected {
+            border-color: #42A5F5;
+            box-shadow: 0 0 10px rgba(66, 165, 245, 0.3);
+        }
+        
+        .hostage-circle.died-captivity-unknown {
+            border-color: #9E9E9E;
+            box-shadow: 0 0 10px rgba(158, 158, 158, 0.3);
+        }
+        
+        .hostage-circle.died-other {
+            border-color: #757575;
+            box-shadow: 0 0 10px rgba(117, 117, 117, 0.3);
+        }
+        
+        .tooltip {
+            position: absolute;
+            background-color: rgba(20, 20, 20, 0.95);
+            color: white;
+            padding: 10px;
             border-radius: 8px;
-            direction: ltr;
-            text-align: left;
+            font-size: 0.9em;
+            pointer-events: none;
+            z-index: 1000;
+            border: 1px solid #444;
+            max-width: 250px;
+            display: none;
+        }
+        
+        .tooltip-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #FFD700;
+        }
+        
+        .tooltip-details {
+            color: #ccc;
+            font-size: 0.8em;
+        }
+        
+        .loading {
+            text-align: center;
+            font-size: 1.2em;
+            color: #FFD700;
+            padding: 50px;
+        }
+        
+        .error {
+            text-align: center;
+            color: #f44336;
+            padding: 20px;
+            background-color: rgba(244, 67, 54, 0.1);
+            border-radius: 10px;
+            margin: 20px;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 200;
+        }
+        
+        .control-button {
+            background-color: rgba(50, 50, 50, 0.9);
+            color: white;
+            border: 1px solid #666;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        .control-button:hover {
+            background-color: rgba(70, 70, 70, 0.9);
+        }
+        
+        .control-button.active {
+            background-color: #FFD700;
+            color: #000;
+        }
+        
+        .cluster-title {
+            position: absolute;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            padding: 8px 16px;
+            border-radius: 20px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 2px solid;
+            min-width: 120px;
+        }
+        
+        .cluster-title.released {
+            color: #9C27B0;
+            border-color: #9C27B0;
+        }
+        
+        .cluster-title.captivity {
+            color: #ff9800;
+            border-color: #ff9800;
+        }
+        
+        .cluster-title.died-oct7 {
+            color: #d32f2f;
+            border-color: #d32f2f;
+        }
+        
+        .cluster-title.died-captivity-hamas {
+            color: #b71c1c;
+            border-color: #b71c1c;
+        }
+        
+        .cluster-title.died-idf-confirmed {
+            color: #1565C0;
+            border-color: #1565C0;
+        }
+        
+        .cluster-title.died-idf-suspected {
+            color: #42A5F5;
+            border-color: #42A5F5;
+        }
+        
+        .cluster-title.died-captivity-unknown {
+            color: #9E9E9E;
+            border-color: #9E9E9E;
+        }
+        
+        .cluster-title.died-other {
+            color: #757575;
+            border-color: #757575;
         }
     </style>
 </head>
 <body>
-    <div class="app-layout">
-        <!-- Fixed Header -->
-        <header class="app-header">
-            <h1>נתיבי גורל החטופים - ויזואליזציית זמן מקיפה</h1>
-            <div class="header-controls">
-                <label class="spacing-toggle">
-                    <input type="checkbox" id="spacing-mode-toggle"> מרווחים אחידים
-                </label>
-                <div id="header-stats" class="header-stats" style="display: none;">
-                    <!-- Stats will be populated here -->
-                </div>
+    <div class="container">
+        <h1>החזירו אותם הביתה - Bring Them Home</h1>
+        
+        <div id="stats" class="stats">
+            <div class="loading">טוען נתונים...</div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <span>שוחררו</span>
+                <div class="legend-color" style="background-color: #9C27B0;"></div>
             </div>
-        </header>
-
-        <!-- Main Content Area -->
-        <main class="app-main">
-            <!-- Error Panel -->
-            <div id="error-panel" class="error" style="display: none;">
-                <h3>שגיאות בעיבוד הנתונים</h3>
-                <div id="error-content"></div>
+            <div class="legend-item">
+                <span>בשבי</span>
+                <div class="legend-color" style="background-color: #ff9800;"></div>
             </div>
-
-            <!-- Loading State -->
-            <div id="loading" class="loading">
-                טוען נתונים ומעבד קובץ CSV...
+            <div class="legend-item">
+                <span>נרצחו ב-7.10</span>
+                <div class="legend-color" style="background-color: #d32f2f;"></div>
             </div>
-
-            <!-- Timeline Container - Direct timeline without wrapper -->
-            <div id="visualization-container" class="timeline-container" style="display: none;">
-                <div id="main-timeline">
-                    <!-- SVG will be inserted here -->
-                </div>
+            <div class="legend-item">
+                <span>נרצחו בשבי ע"י חמאס</span>
+                <div class="legend-color" style="background-color: #b71c1c;"></div>
             </div>
-        </main>
-
-        <!-- Fixed Footer -->
-        <footer class="app-footer">
-            <div id="live-count" class="live-count">טוען נתונים...</div>
-        </footer>
+            <div class="legend-item">
+                <span>נהרגו בטעות צה"ל (מאושר)</span>
+                <div class="legend-color" style="background-color: #1565C0;"></div>
+            </div>
+            <div class="legend-item">
+                <span>נהרגו בטעות צה"ל (חשד)</span>
+                <div class="legend-color" style="background-color: #42A5F5;"></div>
+            </div>
+            <div class="legend-item">
+                <span>נפטרו בשבי - לא ברור</span>
+                <div class="legend-color" style="background-color: #9E9E9E;"></div>
+            </div>
+            <div class="legend-item">
+                <span>נפטרו - אחר</span>
+                <div class="legend-color" style="background-color: #757575;"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-button active" onclick="toggleAnimation()">הפסק/התחל תנועה</button>
+            <button class="control-button" onclick="resetPositions()">איפוס מיקומים</button>
+        </div>
+        
+        <div id="visualization-container" class="visualization-container">
+            <div class="loading">טוען רשימת חטופים...</div>
+        </div>
+        
+        <div id="tooltip" class="tooltip">
+            <div class="tooltip-name"></div>
+            <div class="tooltip-details"></div>
+        </div>
     </div>
 
-    <!-- Tooltip (positioned absolutely) -->
-    <div id="tooltip" class="tooltip" style="display: none;"></div>
+    <script>
+        let hostages = [];
+        let diedInCaptivityData = [];
+        let circles = [];
+        let animationId;
+        let isAnimating = true;
+        let containerWidth, containerHeight;
 
-    <!-- JavaScript Modules -->
-    <script src="js/config.js?v=20250901-1"></script>
-    <script src="js/event-bus.js?v=20250901-1"></script>
-    <script src="js/state-manager.js?v=20250901-1"></script>
-    <script src="js/data-processor.js?v=20250902-1"></script>
-    <script src="js/timeline-core.js?v=20250831-2"></script>
-    <script src="js/lane-manager-new.js?v=1756830226"></script>
-    <script src="js/transition-engine.js?v=20250831-2"></script>
-    <script src="js/color-manager.js?v=1757308648"></script>
-    <script src="js/interaction.js?v=20250831-2"></script>
-    <script src="js/main.js?v=20250902-1"></script>
-    
-    <!-- DEBUG: HTML-based debug square -->
-    <div class="debug-square"></div>
+        // Helper function to get detailed death classification
+        function getDetailedDeathInfo(hostage) {
+            const hebrewName = hostage['Hebrew Name']?.trim();
+            const status = hostage['Current Status']?.trim();
+            const isDead = status === 'Deceased' || status === 'Deceased - Returned' || status === 'Deceased - Body Held';
+            
+            if (!isDead) return null;
+            
+            // Step 1: Try to match with detailed death data
+            let detailMatch = null;
+            
+            if (diedInCaptivityData.length > 0 && hebrewName) {
+                // Exact match first
+                detailMatch = diedInCaptivityData.find(d => {
+                    const deathName = d['Hebrew Name']?.trim();
+                    return deathName && deathName === hebrewName;
+                });
+                
+                // Partial match if no exact match
+                if (!detailMatch) {
+                    detailMatch = diedInCaptivityData.find(d => {
+                        const deathName = d['Hebrew Name']?.trim();
+                        if (!deathName || deathName.length < 3) return false;
+                        
+                        // Split names and check if all death name parts exist in main name
+                        const mainNameParts = hebrewName.split(/\s+/);
+                        const deathNameParts = deathName.split(/\s+/);
+                        
+                        return deathNameParts.length >= 2 && deathNameParts.every(part => 
+                            part.length > 1 && mainNameParts.some(mainPart => 
+                                mainPart.includes(part) || part.includes(mainPart)
+                            )
+                        );
+                    });
+                }
+            }
+            
+            // Step 2: If found in detailed data, use that classification
+            if (detailMatch) {
+                const causeOfDeath = detailMatch['Cause of death']?.trim();
+                
+                if (causeOfDeath === 'C. Killed by IDF Error - Confirmed') {
+                    return 'idf_confirmed';
+                }
+                if (causeOfDeath === 'D. Killed by IDF Error - Suspected') {
+                    return 'idf_suspected';
+                }
+                if (causeOfDeath === 'A. Hamas Execution - Confirmed') {
+                    return 'hamas_execution';
+                }
+                if (causeOfDeath === 'Unknown') {
+                    return 'died_captivity_unknown';
+                }
+                
+                // Any other cause
+                return 'died_captivity_unknown';
+            }
+            
+            // Step 3: Fallback to main CSV classification
+            const originalContext = hostage['Context of Death']?.trim();
+            
+            // Handle October 7th deaths
+            if (originalContext === 'Died Before/During Kidnapping') {
+                return 'died_oct7';
+            }
+            
+            // Handle Hamas executions from main CSV
+            if (originalContext === 'Died in Captivity - Killed by Hamas' ||
+                originalContext?.includes('Brutally murdered by terrorists') ||
+                originalContext?.includes('Murdered with gunshot')) {
+                return 'hamas_execution';
+            }
+            
+            // Handle IDF incidents from main CSV
+            if (originalContext === 'Died in Captivity - Killed by IDF' ||
+                originalContext?.includes('Shot by an Israeli sniper') ||
+                originalContext?.includes('shot by an IDF soldier') ||
+                originalContext?.includes('Israeli airstrike')) {
+                return originalContext?.includes('airstrike') ? 'idf_suspected' : 'idf_confirmed';
+            }
+            
+            // Handle other specific contexts
+            if (originalContext?.includes('Unprovoked Execution')) {
+                return 'hamas_execution';
+            }
+            
+            // Default for other deceased
+            return 'died_other';
+        }
+
+        // Categories definition with clustering positions
+        const categories = {
+            released: {
+                title: 'שוחררו',
+                className: 'released',
+                color: '#9C27B0',
+                centerX: 0.12,
+                centerY: 0.5,
+                filter: (hostage) => {
+                    const status = hostage['Current Status']?.trim();
+                    return status === 'Released';
+                }
+            },
+            captivity: {
+                title: 'בשבי',
+                className: 'captivity',
+                color: '#ff9800',
+                centerX: 0.28,
+                centerY: 0.5,
+                filter: (hostage) => {
+                    const status = hostage['Current Status']?.trim();
+                    return status === 'Held in Gaza';
+                }
+            },
+            died_oct7: {
+                title: 'נרצחו ב-7.10',
+                className: 'died-oct7',
+                color: '#d32f2f',
+                centerX: 0.45,
+                centerY: 0.25,
+                filter: (hostage) => {
+                    const classification = getDetailedDeathInfo(hostage);
+                    return classification === 'died_oct7';
+                }
+            },
+            hamas_execution: {
+                title: 'נרצחו בשבי ע"י חמאס',
+                className: 'died-captivity-hamas',
+                color: '#b71c1c',
+                centerX: 0.65,
+                centerY: 0.25,
+                filter: (hostage) => {
+                    return getDetailedDeathInfo(hostage) === 'hamas_execution';
+                }
+            },
+            idf_confirmed: {
+                title: 'נהרגו בטעות צה"ל (מאושר)',
+                className: 'died-idf-confirmed',
+                color: '#1565C0',
+                centerX: 0.82,
+                centerY: 0.35,
+                filter: (hostage) => {
+                    return getDetailedDeathInfo(hostage) === 'idf_confirmed';
+                }
+            },
+            idf_suspected: {
+                title: 'נהרגו בטעות צה"ל (חשד)',
+                className: 'died-idf-suspected',
+                color: '#42A5F5',
+                centerX: 0.82,
+                centerY: 0.65,
+                filter: (hostage) => {
+                    return getDetailedDeathInfo(hostage) === 'idf_suspected';
+                }
+            },
+            died_captivity_unknown: {
+                title: 'נפטרו בשבי - נסיבות לא ברורות',
+                className: 'died-captivity-unknown',
+                color: '#9E9E9E',
+                centerX: 0.5,
+                centerY: 0.75,
+                filter: (hostage) => {
+                    return getDetailedDeathInfo(hostage) === 'died_captivity_unknown';
+                }
+            },
+            died_other: {
+                title: 'נפטרו - אחר',
+                className: 'died-other',
+                color: '#757575',
+                centerX: 0.8,
+                centerY: 0.75,
+                filter: (hostage) => {
+                    return getDetailedDeathInfo(hostage) === 'died_other';
+                }
+            }
+        };
+
+        // Circle physics object
+        class HostageCircle {
+            constructor(hostage, category, index) {
+                this.hostage = hostage;
+                this.category = category;
+                this.size = Math.random() * 20 + 30; // 30-50px diameter
+                
+                // Random starting position
+                this.x = Math.random() * containerWidth;
+                this.y = Math.random() * containerHeight;
+                
+                // Target position (cluster center with some randomness)
+                this.targetX = (category.centerX * containerWidth) + (Math.random() - 0.5) * 200;
+                this.targetY = (category.centerY * containerHeight) + (Math.random() - 0.5) * 200;
+                
+                // Physics
+                this.vx = 0;
+                this.vy = 0;
+                this.friction = 0.95;
+                this.spring = 0.02;
+                
+                this.element = this.createElement();
+            }
+            
+            createElement() {
+                const div = document.createElement('div');
+                div.className = `hostage-circle ${this.category.className}`;
+                div.style.width = this.size + 'px';
+                div.style.height = this.size + 'px';
+                div.style.left = this.x + 'px';
+                div.style.top = this.y + 'px';
+                
+                const photoUrl = this.hostage['Photo URL'];
+                if (photoUrl && photoUrl.startsWith('http')) {
+                    div.style.backgroundImage = `url(${photoUrl})`;
+                } else {
+                    // Fallback to colored circle with initial
+                    div.style.backgroundColor = this.category.color;
+                    div.style.display = 'flex';
+                    div.style.alignItems = 'center';
+                    div.style.justifyContent = 'center';
+                    div.style.fontSize = '12px';
+                    div.style.fontWeight = 'bold';
+                    const name = this.hostage['Hebrew Name'] || '';
+                    div.textContent = name.charAt(0) || '?';
+                }
+                
+                // Tooltip events
+                div.addEventListener('mouseenter', (e) => this.showTooltip(e));
+                div.addEventListener('mouseleave', () => this.hideTooltip());
+                div.addEventListener('mousemove', (e) => this.updateTooltip(e));
+                
+                return div;
+            }
+            
+            showTooltip(e) {
+                const tooltip = document.getElementById('tooltip');
+                const name = this.hostage['Hebrew Name'] || 'שם לא זמין';
+                const age = this.hostage['Age at Kidnapping'] || '';
+                const rank = this.hostage['Rank'] || '';
+                const status = this.hostage['Civilian/Soldier Status'] || '';
+                const currentStatus = this.hostage['Current Status'] || '';
+                const deathContext = this.hostage['Context of Death'] || '';
+                
+                tooltip.querySelector('.tooltip-name').textContent = name;
+                
+                let details = [];
+                if (age) details.push(`גיל: ${age}`);
+                if (rank) details.push(`דרגה: ${rank}`);
+                if (status) details.push(status);
+                if (currentStatus) details.push(`מצב נוכחי: ${currentStatus}`);
+                if (deathContext && deathContext !== 'Context of Death') {
+                    details.push(`נסיבות: ${deathContext}`);
+                }
+                
+                tooltip.querySelector('.tooltip-details').innerHTML = details.join('<br>');
+                
+                tooltip.style.display = 'block';
+                this.updateTooltip(e);
+            }
+            
+            hideTooltip() {
+                document.getElementById('tooltip').style.display = 'none';
+            }
+            
+            updateTooltip(e) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY - 10) + 'px';
+            }
+            
+            update() {
+                if (!isAnimating) return;
+                
+                // Spring force toward target
+                const dx = this.targetX - this.x;
+                const dy = this.targetY - this.y;
+                
+                this.vx += dx * this.spring;
+                this.vy += dy * this.spring;
+                
+                // Apply friction
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Boundary constraints
+                const margin = this.size / 2;
+                this.x = Math.max(margin, Math.min(containerWidth - margin, this.x));
+                this.y = Math.max(margin, Math.min(containerHeight - margin, this.y));
+                
+                // Update DOM element
+                this.element.style.left = this.x + 'px';
+                this.element.style.top = this.y + 'px';
+            }
+            
+            setTarget(x, y) {
+                this.targetX = x;
+                this.targetY = y;
+            }
+        }
+
+        // Improved CSV parsing function
+        function parseCSV(csvText) {
+            const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+            if (lines.length === 0) return [];
+            
+            // Parse headers - handle quoted headers
+            const headerLine = lines[0];
+            const headers = [];
+            let currentHeader = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < headerLine.length; i++) {
+                const char = headerLine[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    headers.push(currentHeader.replace(/^"|"$/g, '').trim());
+                    currentHeader = '';
+                } else {
+                    currentHeader += char;
+                }
+            }
+            headers.push(currentHeader.replace(/^"|"$/g, '').trim());
+            
+            // Parse data rows
+            return lines.slice(1)
+                .filter(line => line.trim() && !line.startsWith(',,,'))  // Skip empty or separator rows
+                .map(line => {
+                    const values = [];
+                    let current = '';
+                    let inQuotes = false;
+                    
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"') {
+                            // Handle escaped quotes
+                            if (i + 1 < line.length && line[i + 1] === '"') {
+                                current += '"';
+                                i++; // skip next quote
+                            } else {
+                                inQuotes = !inQuotes;
+                            }
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(current.replace(/^"|"$/g, '').trim());
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    values.push(current.replace(/^"|"$/g, '').trim());
+                    
+                    // Create object with header mapping
+                    const obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = values[index] || '';
+                    });
+                    
+                    // Only return objects with actual data
+                    if (obj[headers[0]] || obj[headers[1]]) {  // At least name or hebrew name
+                        return obj;
+                    }
+                    return null;
+                })
+                .filter(obj => obj !== null);
+        }
+
+        // Update statistics
+        function updateStats(hostages) {
+            const stats = {
+                total: hostages.length,
+                released: hostages.filter(categories.released.filter).length,
+                captivity: hostages.filter(categories.captivity.filter).length,
+                died_oct7: hostages.filter(categories.died_oct7.filter).length,
+                hamas_execution: hostages.filter(categories.hamas_execution.filter).length,
+                idf_confirmed: hostages.filter(categories.idf_confirmed.filter).length,
+                idf_suspected: hostages.filter(categories.idf_suspected.filter).length,
+                died_captivity_unknown: hostages.filter(categories.died_captivity_unknown.filter).length,
+                died_other: hostages.filter(categories.died_other.filter).length
+            };
+
+            const totalDeceased = stats.died_oct7 + stats.hamas_execution + stats.idf_confirmed + stats.idf_suspected + stats.died_captivity_unknown + stats.died_other;
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-number">${stats.total}</div>
+                    <div class="stat-label">סה"כ</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.released}</div>
+                    <div class="stat-label">שוחררו</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.captivity}</div>
+                    <div class="stat-label">בשבי</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.died_oct7}</div>
+                    <div class="stat-label">7.10</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.hamas_execution}</div>
+                    <div class="stat-label">חמאס</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.idf_confirmed}</div>
+                    <div class="stat-label">צה"ל מאושר</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.idf_suspected}</div>
+                    <div class="stat-label">צה"ל חשד</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.died_captivity_unknown}</div>
+                    <div class="stat-label">בשבי לא ברור</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${stats.died_other}</div>
+                    <div class="stat-label">אחר</div>
+                </div>
+            `;
+        }
+
+        // Create visualization
+        function createVisualization(hostages) {
+            const container = document.getElementById('visualization-container');
+            container.innerHTML = '';
+            
+            // Update container dimensions
+            containerWidth = container.offsetWidth;
+            containerHeight = container.offsetHeight;
+            
+            circles = [];
+            
+            // Create cluster titles first
+            Object.entries(categories).forEach(([key, category]) => {
+                const categoryHostages = hostages.filter(category.filter);
+                
+                if (categoryHostages.length > 0) {
+                    const titleElement = document.createElement('div');
+                    titleElement.className = `cluster-title ${category.className}`;
+                    titleElement.textContent = `${category.title} (${categoryHostages.length})`;
+                    
+                    // Position title above cluster center
+                    const titleX = (category.centerX * containerWidth) - 75; // offset for centering
+                    const titleY = (category.centerY * containerHeight) - 120; // above cluster
+                    
+                    titleElement.style.left = Math.max(10, Math.min(containerWidth - 160, titleX)) + 'px';
+                    titleElement.style.top = Math.max(10, titleY) + 'px';
+                    
+                    container.appendChild(titleElement);
+                }
+            });
+            
+            // Create circles for each category
+            Object.entries(categories).forEach(([key, category]) => {
+                const categoryHostages = hostages.filter(category.filter);
+                
+                categoryHostages.forEach((hostage, index) => {
+                    const circle = new HostageCircle(hostage, category, index);
+                    circles.push(circle);
+                    container.appendChild(circle.element);
+                });
+            });
+            
+            console.log(`Created ${circles.length} circles`);
+            
+            // Start animation
+            if (!animationId) {
+                animate();
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            circles.forEach(circle => circle.update());
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Control functions
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            const button = document.querySelector('.control-button');
+            button.textContent = isAnimating ? 'הפסק תנועה' : 'התחל תנועה';
+            button.classList.toggle('active', isAnimating);
+        }
+
+        function resetPositions() {
+            circles.forEach(circle => {
+                circle.x = Math.random() * containerWidth;
+                circle.y = Math.random() * containerHeight;
+                circle.vx = 0;
+                circle.vy = 0;
+                
+                // Reset target with new randomness
+                circle.targetX = (circle.category.centerX * containerWidth) + (Math.random() - 0.5) * 200;
+                circle.targetY = (circle.category.centerY * containerHeight) + (Math.random() - 0.5) * 200;
+            });
+        }
+
+        // Handle window resize
+        function handleResize() {
+            const container = document.getElementById('visualization-container');
+            containerWidth = container.offsetWidth;
+            containerHeight = container.offsetHeight;
+            
+            // Update targets for new dimensions
+            circles.forEach(circle => {
+                circle.targetX = (circle.category.centerX * containerWidth) + (Math.random() - 0.5) * 200;
+                circle.targetY = (circle.category.centerY * containerHeight) + (Math.random() - 0.5) * 200;
+            });
+            
+            // Update title positions
+            const titles = container.querySelectorAll('.cluster-title');
+            titles.forEach(title => {
+                const categoryKey = Object.keys(categories).find(key => 
+                    title.classList.contains(categories[key].className)
+                );
+                if (categoryKey) {
+                    const category = categories[categoryKey];
+                    const titleX = (category.centerX * containerWidth) - 75;
+                    const titleY = (category.centerY * containerHeight) - 120;
+                    
+                    title.style.left = Math.max(10, Math.min(containerWidth - 160, titleX)) + 'px';
+                    title.style.top = Math.max(10, titleY) + 'px';
+                }
+            });
+        }
+
+        // Load and process data
+        async function loadData() {
+            try {
+                // Load main hostages data
+                const hostagesResponse = await fetch('v1/data/hostages-with-rescue-events.csv');
+                if (!hostagesResponse.ok) {
+                    throw new Error(`HTTP error loading hostages data! status: ${hostagesResponse.status}`);
+                }
+                const hostagesText = await hostagesResponse.text();
+                hostages = parseCSV(hostagesText);
+
+                // Load detailed death data
+                const deathResponse = await fetch('v1/data/Died in captivity.csv');
+                if (!deathResponse.ok) {
+                    console.warn('Could not load detailed death data, using fallback classification');
+                    diedInCaptivityData = [];
+                } else {
+                    const deathText = await deathResponse.text();
+                    diedInCaptivityData = parseCSV(deathText);
+                }
+                
+                updateStats(hostages);
+                createVisualization(hostages);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('visualization-container').innerHTML = `
+                    <div class="error">
+                        שגיאה בטעינת הנתונים: ${error.message}<br>
+                        נסה לרענן את הדף
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadData);
+        window.addEventListener('resize', handleResize);
+    </script>
 </body>
 </html>
